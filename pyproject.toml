@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "energy-race-sim"
+version = "0.1.0"
+description = "Energy Simulation for Electric Vehicles on Race Tracks"
+authors = ["Jonas Alder"]
+license = "MIT"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+assertpy = "^1.1"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.2.2"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+package-mode = false
