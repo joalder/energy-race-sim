@@ -51,7 +51,7 @@ class Car(Tickable):
         return f"""
         Speed (m/s): {self.current_speed}
         Position (x/y/z): {self.position.x}/{self.position.y}/{self.position.z}
-        Orientation (0-360): {self.position.orientation}
+        Orientation (0-359): {self.position.orientation}
         Distance Driven (m): {self.distance_driven}
         Total Energy Used (Wh): {self.energy_used}
         Current Energy Stored (Wh): {self.energy_stored}
