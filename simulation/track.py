@@ -1,16 +1,15 @@
 import math
 from abc import ABC, abstractmethod
 from enum import Enum
+from typing import Self
 
 from simulation.environment import Position
 
-SIN_90_DEGREES = math.sin(math.radians(90))
-
 
 class Tile(ABC):
-    def __init__(self, origin: Position, width: int = 10):
+    def __init__(self, origin: Position, width: float = 10):
         self.origin: Position = origin
-        self.width: int = width
+        self.width: float = width
 
     @abstractmethod
     def get_destination(self) -> Position:
@@ -18,19 +17,47 @@ class Tile(ABC):
 
 
 class Direction(Enum):
-    LEFT = 'l'
-    RIGHT = 'r'
+    """
+    Values represent clock wise (right) vs. anti-clockwise (left)
+    """
+    RIGHT = 1
+    LEFT = -1
 
 
 class CornerTile(Tile):
-    def __init__(self, origin, alpha: int, inner_radius: int, direction: Direction, width=10):
+    def __init__(self, origin, alpha: int, inner_radius: float, direction: Direction, width=10):
         super().__init__(origin, width)
+        # TODO: add some validation for limits, e.g < 360 deg etc.
         self.alpha: int = alpha
-        self.inner_radius: int = inner_radius
+        self.inner_radius: float = inner_radius
         self.direction: Direction = direction
 
     def get_destination(self) -> Position:
-        raise NotImplementedError()
+        # TODO: check if current approach works for corners >= 180deg
+
+        if self.direction == Direction.RIGHT:
+            radius = self.width + self.inner_radius
+        else:
+            radius = self.inner_radius
+
+        relative_angle_to_destination = (90 - (180 - self.alpha) / 2) * self.direction.value
+        angle_to_destination = abs_angle(self.origin.orientation + relative_angle_to_destination)
+
+        hc = (radius ** 2 * math.sin(math.radians(self.alpha))) / radius
+
+        distance_to_destination = hc * 1 / math.sin(math.radians(((180 - self.alpha) / 2)))
+        angle_at_destination = abs_angle(self.origin.orientation + self.alpha * self.direction.value)
+
+        return self.origin.derive(orientation=angle_to_destination) \
+            .translate(distance_to_destination) \
+            .derive(orientation=angle_at_destination)
+
+    def __str__(self):
+        return f"Corner {self.origin} -> {self.alpha}° {self.direction} radius {self.inner_radius}m"
+
+
+def abs_angle(angle: float) -> float:
+    return (angle + 360) % 360
 
 
 class StraightTile(Tile):
@@ -39,21 +66,15 @@ class StraightTile(Tile):
     Destination is the equivalent on the end of the tile.
     """
 
-    def __init__(self, origin: Position, length: int, width: int = 10):
+    def __init__(self, origin: Position, length: float, width: float = 10):
         super().__init__(origin, width)
         self.length = length
 
     def get_destination(self) -> Position:
-        # TODO: is C always 90deg? Just remove it as it is 1
-
-        precision = 3
-        new_x = round(self.length * math.sin(math.radians(180 - 90 - self.origin.orientation)) / SIN_90_DEGREES,
-                      precision)
-        new_y = round(self.length * math.sin(self.origin.orientation_rad) / SIN_90_DEGREES, precision)
-        return self.origin.derive(x=new_x, y=new_y)
+        return self.origin.translate(self.length)
 
     def __str__(self):
-        return f"Straight {self.origin} -> {self.length}m -> {self.get_destination()}"
+        return f"Straight {self.origin} -> {self.length}m"
 
 
 class Track:
