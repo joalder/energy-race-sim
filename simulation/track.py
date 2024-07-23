@@ -1,9 +1,12 @@
+import logging
 import math
 from abc import ABC, abstractmethod
 from enum import Enum
 from typing import Self
 
 from simulation.environment import Position
+
+log = logging.getLogger(__name__)
 
 
 class Tile(ABC):
@@ -78,4 +81,49 @@ class StraightTile(Tile):
 
 
 class Track:
+    def __init__(self, name: str, tiles: list[Tile]):
+        self.name = name
+        self.tiles = tiles
+        self.origin = tiles[0].origin
+
+    def __str__(self):
+        result = f"Track {self.name} \n\n"
+        for tile in self.tiles:
+            result += f"Tile {tile}\n"
+        return result
+
+class TrackDoesNotLoopException(Exception):
+    def __init__(self, tiles: list[Tile]):
+        super().__init__()
+        self.tiles = tiles
+
+
+class TrackIsEmptyException(Exception):
     pass
+
+
+class TrackBuilder:
+
+    def __init__(self, name: str, position: Position):
+        self.name = name
+        self.track_origin: Position = position
+        self.current_end: Position = position
+        self.tiles: list[Tile] = []
+
+    def into(self, tile: Tile) -> Self:
+        self.current_end = tile.get_destination()
+        self.tiles.append(tile)
+        return self
+
+    def into_straight(self, length: float):
+        return self.into(StraightTile(self.current_end, length))
+
+    def into_corner(self, direction: Direction, angle: int, inner_radius: float):
+        return self.into(CornerTile(self.current_end, angle, inner_radius, direction))
+
+    def loop(self) -> Track:
+        if not self.tiles:
+            raise TrackIsEmptyException()
+        if self.current_end != self.track_origin:
+            raise TrackDoesNotLoopException(self.tiles)
+        return Track(self.name, self.tiles)
