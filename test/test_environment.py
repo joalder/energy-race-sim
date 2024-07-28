@@ -1,6 +1,6 @@
 from assertpy import assert_that
 
-from simulation.environment import Position
+from simulation.position import Position
 
 
 def test__position__equality__same_values_different_instance():

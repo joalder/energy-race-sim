@@ -1,8 +1,8 @@
 import pytest
 from assertpy import assert_that
 
-from simulation.environment import Position
-from simulation.track import StraightTile, CornerTile, Direction
+from simulation.position import Position
+from simulation.tile import Direction, CornerTile, StraightTile
 
 POSITION_0_0_0_0 = Position(0, 0, 0, 0)
 
@@ -36,6 +36,8 @@ test_data_straight_off_center = [
     (Position(0, 20, 0, 270), 20, Position(0, 0, 0, 270)),
     (Position(-42, 42, 0, 315), 20, Position(-27.858, 27.858, 0, 315)),
 ]
+
+
 @pytest.mark.parametrize("origin,length,destination_expected", test_data_straight_off_center)
 def test__straight_line_off_center(origin, length, destination_expected):
     tile = StraightTile(origin, 20)
@@ -96,3 +98,31 @@ def test__corner__full_circle_left():
     final_destination = fourth_tile.get_destination()
 
     assert_that(final_destination).is_equal_to(expected_final_position)
+
+
+test_data_corners_path_length = [
+    (POSITION_0_0_0_0, 90, 10, Direction.RIGHT, 17.279),  # 15.708 + 10%
+    (POSITION_0_0_0_0, 45, 10, Direction.RIGHT, 8.639),  # 7.854 + 10%
+    (POSITION_0_0_0_0, 90, 10, Direction.LEFT, 17.279),
+    (POSITION_0_0_0_0, 45, 10, Direction.LEFT, 8.639),
+]
+
+
+@pytest.mark.parametrize("origin,alpha,inner_radius,direction,path_length_expected", test_data_corners_path_length)
+def test__corner__path_length(origin, alpha: int, inner_radius: int, direction: Direction, path_length_expected: float):
+    tile = CornerTile(origin, alpha, inner_radius, direction)
+
+    assert_that(tile.path_length()).is_equal_to(path_length_expected)
+
+
+test_data_straight_path_length = [
+    (POSITION_0_0_0_0, 10, 10.5),  # 10 + 5%
+    (POSITION_0_0_0_0, 20, 21),  # 20 + 5%
+]
+
+
+@pytest.mark.parametrize("origin,length,path_length_expected", test_data_straight_path_length)
+def test__corner__path_length(origin, length: float, path_length_expected: float):
+    tile = StraightTile(origin, length)
+
+    assert_that(tile.path_length()).is_equal_to(path_length_expected)

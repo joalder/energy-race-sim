@@ -1,83 +1,15 @@
 import logging
-import math
-from abc import ABC, abstractmethod
-from enum import Enum
 from typing import Self
 
-from simulation.environment import Position
+from simulation.position import Position
+from simulation.tile import Tile, Direction, CornerTile, StraightTile
+from simulation.units import PROGRESS_PERCENTAGE_PRECISION, DISTANCE_PRECISION
 
 log = logging.getLogger(__name__)
 
 
-class Tile(ABC):
-    def __init__(self, origin: Position, width: float = 10):
-        self.origin: Position = origin
-        self.width: float = width
-
-    @abstractmethod
-    def get_destination(self) -> Position:
-        pass
-
-
-class Direction(Enum):
-    """
-    Values represent clock wise (right) vs. anti-clockwise (left)
-    """
-    RIGHT = 1
-    LEFT = -1
-
-
-class CornerTile(Tile):
-    def __init__(self, origin, alpha: int, inner_radius: float, direction: Direction, width=10):
-        super().__init__(origin, width)
-        # TODO: add some validation for limits, e.g < 360 deg etc.
-        self.alpha: int = alpha
-        self.inner_radius: float = inner_radius
-        self.direction: Direction = direction
-
-    def get_destination(self) -> Position:
-        # TODO: check if current approach works for corners >= 180deg
-
-        if self.direction == Direction.RIGHT:
-            radius = self.width + self.inner_radius
-        else:
-            radius = self.inner_radius
-
-        relative_angle_to_destination = (90 - (180 - self.alpha) / 2) * self.direction.value
-        angle_to_destination = abs_angle(self.origin.orientation + relative_angle_to_destination)
-
-        hc = (radius ** 2 * math.sin(math.radians(self.alpha))) / radius
-
-        distance_to_destination = hc * 1 / math.sin(math.radians(((180 - self.alpha) / 2)))
-        angle_at_destination = abs_angle(self.origin.orientation + self.alpha * self.direction.value)
-
-        return self.origin.derive(orientation=angle_to_destination) \
-            .translate(distance_to_destination) \
-            .derive(orientation=angle_at_destination)
-
-    def __str__(self):
-        return f"Corner {self.origin} -> {self.alpha}° {self.direction} radius {self.inner_radius}m"
-
-
-def abs_angle(angle: float) -> float:
-    return (angle + 360) % 360
-
-
-class StraightTile(Tile):
-    """
-    Origin defines the corner on the left where the specific tile starts.
-    Destination is the equivalent on the end of the tile.
-    """
-
-    def __init__(self, origin: Position, length: float, width: float = 10):
-        super().__init__(origin, width)
-        self.length = length
-
-    def get_destination(self) -> Position:
-        return self.origin.translate(self.length)
-
-    def __str__(self):
-        return f"Straight {self.origin} -> {self.length}m"
+class TileNotPartOfTrackError(Exception):
+    pass
 
 
 class Track:
@@ -86,11 +18,38 @@ class Track:
         self.tiles = tiles
         self.origin = tiles[0].origin
 
+    @property
+    def starting_tile(self):
+        return self.tiles[0]
+
     def __str__(self):
         result = f"Track {self.name} \n\n"
         for tile in self.tiles:
             result += f"Tile {tile}\n"
         return result
+
+    def tile_after(self, tile):
+        current_index = self.tiles.index(tile)
+
+        if current_index == -1:
+            raise TileNotPartOfTrackError()
+
+        if current_index == len(self.tiles) - 1:
+            return self.starting_tile
+
+        return self.tiles[current_index + 1]
+
+    def tile_before(self, tile):
+        raise NotImplementedError()
+
+    @property
+    def total_length(self) -> float:
+        total_length = 0
+        for tile in self.tiles:
+            total_length += tile.path_length()
+
+        return round(total_length, DISTANCE_PRECISION)
+
 
 class TrackDoesNotLoopException(Exception):
     def __init__(self, tiles: list[Tile]):
@@ -127,3 +86,37 @@ class TrackBuilder:
         if self.current_end != self.track_origin:
             raise TrackDoesNotLoopException(self.tiles)
         return Track(self.name, self.tiles)
+
+
+class TrackLocation:
+    def __init__(self, track: Track, tile: Tile, progress: float):
+        self.track = track
+        self.tile = tile
+        self.progress = progress
+
+    def move(self, distance: float, passed_finish_line: bool = False) -> tuple[Self, bool]:
+        """
+        :param distance: to move in total
+        :param passed_finish_line: if finish line has already been passed
+        :return: tuple of new location / finish line has been passed
+        """
+        distance_left_on_tile = (100 - self.progress) / 100 * self.tile.path_length()
+
+        if distance >= distance_left_on_tile:
+            next_tile = self.track.tile_after(self.tile)
+            new_distance = round(distance - distance_left_on_tile, DISTANCE_PRECISION)
+            return TrackLocation(self.track, next_tile, 0.0) \
+                .move(new_distance, passed_finish_line or next_tile == self.track.starting_tile)
+
+        new_progress = round(100 - ((distance_left_on_tile - distance) / self.tile.path_length() * 100),
+                             PROGRESS_PERCENTAGE_PRECISION)
+        return TrackLocation(self.track, self.tile, new_progress), passed_finish_line
+
+    def __str__(self):
+        return f"Tile: {self.tile} / Progress: {self.progress:.1f}%"
+
+    def __eq__(self, other):
+        if isinstance(other, TrackLocation):
+            return self.__dict__ == other.__dict__
+
+        return False
