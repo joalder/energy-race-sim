@@ -13,7 +13,7 @@ log.setLevel(logging.DEBUG)
 
 def test__10kwh_33max_2acceleration_on_basic_oval():
     car = Car(max_acceleration=2, max_speed=33, energy_stored=10_000)
-    track = TrackBuilder("Simple Track", Position(0, 0, 0, 0)) \
+    track = TrackBuilder("Basic Oval", Position(0, 0, 0, 0)) \
         .into_straight(25) \
         .into_corner(Direction.RIGHT, 90, 10) \
         .into_straight(12) \
