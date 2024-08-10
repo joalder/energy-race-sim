@@ -19,28 +19,28 @@ class Simulation:
         self.car_history: dict[int, Car] = {self.time: self.car}
 
     def loop(self):
-        self._setup()
+        self.setup()
 
         while not self.is_done():
-            self._tick()
+            self.tick()
 
         log.info(f"Simulation done. Total time: {self.time}s")
 
     def is_done(self) -> bool:
         return self.time >= MAX_RUNTIME_SECONDS
 
-    def _setup(self):
+    def setup(self):
         self.car.location = TrackLocation(self.environment.track, self.environment.track.starting_tile, 0.0)
 
-    def _tick(self):
-        self._advance_time()
+    def tick(self, seconds_per_tick: int = 1):
+        self._advance_time(seconds_per_tick)
 
         log.debug(f"Processing tick at {self.time}s")
 
-        self.car = self.car.apply(self.environment, SECONDS_PER_TICK)
+        self.car = self.car.apply(self.environment, seconds_per_tick)
         self.car_history[self.time] = self.car
 
         log.info(self.environment.status())
 
-    def _advance_time(self):
-        self.time += SECONDS_PER_TICK
+    def _advance_time(self, seconds_per_tick):
+        self.time += seconds_per_tick
