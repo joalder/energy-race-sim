@@ -11,3 +11,4 @@
 - More sophisticated energy simulation like acceleration, regen, electrical resistance, rotational mass, brake vs. regen
 - Additional environment parameters like temperature, wetness, ...
 - Visualize track and locations
+- Plugin architecture for strategies and different physical aspects
