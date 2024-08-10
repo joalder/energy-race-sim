@@ -1,5 +1,5 @@
 import math
-from typing import Self
+from typing import Self, Optional
 
 from simulation.units import DISTANCE_PRECISION
 
@@ -17,11 +17,11 @@ class Position:
     def orientation_rad(self):
         return math.radians(self.orientation)
 
-    def translate(self, distance: float) -> Self:
-        new_x = round(self.x +
-                      distance * math.sin(math.radians(180 - 90 - self.orientation)),
+    def translate(self, distance: float, relative_angle: Optional[float] = None) -> Self:
+        translation_angle = self.orientation + relative_angle if relative_angle is not None else self.orientation
+        new_x = round(self.x + distance * math.sin(math.pi / 2 - math.radians(translation_angle)),
                       DISTANCE_PRECISION)
-        new_y = round(self.y + distance * math.sin(self.orientation_rad), DISTANCE_PRECISION)
+        new_y = round(self.y + distance * math.sin(math.radians(translation_angle)), DISTANCE_PRECISION)
         return self.derive(x=new_x, y=new_y)
 
     def derive(self, x=None, y=None, z=None, orientation=None) -> Self:
@@ -40,3 +40,6 @@ class Position:
 
     def __str__(self):
         return f"Position: {self.x}x {self.y}y {self.z}z {self.orientation}deg"
+
+    def __repr__(self):
+        return self.__str__()

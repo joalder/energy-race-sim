@@ -54,8 +54,7 @@ class Car(Tickable):
             time_delta) if acceleration >= 0 else 0 + -STANDBY_POWER * convert_seconds_to_hours(time_delta)
 
         log.info(self.status_delta(time_delta, energy_delta, speed_delta, acceleration, distance_delta, passed_finish_line))
-        derived_car = self.derive_car(energy_delta, speed_delta, distance_delta, self.position, new_location)
-        return derived_car
+        return self.derive_car(energy_delta, speed_delta, distance_delta, self.position, new_location)
 
     def status_static(self) -> str:
         return f"""

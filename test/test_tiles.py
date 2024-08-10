@@ -27,6 +27,26 @@ def test__straight_line(origin, length, destination_expected):
     assert_that(destination).is_equal_to(destination_expected)
 
 
+test_data_straight_points = [
+    (POSITION_0_0_0_0, 20, Position(0, 0, 0, 0), Position(0, 10, 0, 0), Position(20, 0, 0, 0), Position(20, 10, 0, 0)),
+    (Position(15, 15, 0, 0), 20, Position(15, 15, 0, 0), Position(15, 25, 0, 0), Position(35, 15, 0, 0),
+     Position(35, 25, 0, 0)),
+    (Position(10, 10, 0, 180), 20, Position(10, 10, 0, 180), Position(10, 0, 0, 180), Position(-10, 10, 0, 180),
+     Position(-10, 0, 0, 180))
+]
+
+
+@pytest.mark.parametrize("origin,length,origin_left, origin_right, destination_left, destination_right",
+                         test_data_straight_points)
+def test__straight_line__defining_points(origin, length, origin_left, origin_right, destination_left,
+                                         destination_right):
+    tile = StraightTile(origin, length)
+
+    defining_points = tile.get_defining_points()
+
+    assert_that(defining_points).contains(origin_left, origin_right, destination_left, destination_right)
+
+
 test_data_straight_off_center = [
     (Position(7, 7, 0, 30), 20, Position(24.321, 17, 0, 30)),
     (Position(-7, -7, 0, 45), 20, Position(7.142, 7.142, 0, 45)),

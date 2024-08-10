@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 from enum import Enum
 
 from simulation.position import Position
-from simulation.units import DISTANCE_PRECISION
+from simulation.units import DISTANCE_PRECISION, abs_angle
 
 
 class Tile(ABC):
@@ -14,6 +14,19 @@ class Tile(ABC):
     @abstractmethod
     def get_destination(self) -> Position:
         pass
+
+    def get_defining_points(self) -> tuple[Position, Position, Position, Position]:
+        """
+        :return: the 4 defining points of the tile in the following order:
+        origin left, origin right, destination left, destination right
+        """
+        destination = self.get_destination()
+        return (
+            self.origin,
+            self.origin.translate(self.width, self.origin.orientation + 90),
+            destination,
+            destination.translate(self.width, self.origin.orientation + 90)
+        )
 
     @abstractmethod
     def path_length(self) -> float:
@@ -33,12 +46,16 @@ class Direction(Enum):
 
 
 class CornerTile(Tile):
-    def __init__(self, origin, alpha: int, inner_radius: float, direction: Direction, width=10):
+    def __init__(self, origin: Position, alpha: int, inner_radius: float, direction: Direction, width=10):
         super().__init__(origin, width)
         # TODO: add some validation for limits, e.g < 360 deg etc.
         self.alpha: int = alpha
         self.inner_radius: float = inner_radius
         self.direction: Direction = direction
+
+    @property
+    def alpha_rad(self):
+        return math.radians(self.alpha)
 
     def get_destination(self) -> Position:
         # TODO: check if current approach works for corners >= 180deg
@@ -60,6 +77,11 @@ class CornerTile(Tile):
             .translate(distance_to_destination) \
             .derive(orientation=angle_at_destination)
 
+    def get_radius_center(self) -> Position:
+        radius = self.width + self.inner_radius if self.direction == Direction.RIGHT else self.inner_radius
+        return self.origin.derive(orientation=abs_angle(self.origin.orientation + 90 * self.direction.value)) \
+            .translate(radius)
+
     def path_length(self):
         # TODO: implement properly based on previous/next tile and some sort of racing line
         # 2r * pi / ratio of a full circle + 10% because of not hugging the inside all the time
@@ -67,10 +89,6 @@ class CornerTile(Tile):
 
     def __str__(self):
         return f"Corner {self.origin} -> {self.alpha}° {self.direction} radius {self.inner_radius}m"
-
-
-def abs_angle(angle: float) -> float:
-    return (angle + 360) % 360
 
 
 class StraightTile(Tile):
