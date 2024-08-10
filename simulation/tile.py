@@ -23,9 +23,9 @@ class Tile(ABC):
         destination = self.get_destination()
         return (
             self.origin,
-            self.origin.translate(self.width, self.origin.orientation + 90),
+            self.origin.translate(self.width, 90),
             destination,
-            destination.translate(self.width, self.origin.orientation + 90)
+            destination.translate(self.width, 90)
         )
 
     @abstractmethod

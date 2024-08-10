@@ -32,7 +32,9 @@ test_data_straight_points = [
     (Position(15, 15, 0, 0), 20, Position(15, 15, 0, 0), Position(15, 25, 0, 0), Position(35, 15, 0, 0),
      Position(35, 25, 0, 0)),
     (Position(10, 10, 0, 180), 20, Position(10, 10, 0, 180), Position(10, 0, 0, 180), Position(-10, 10, 0, 180),
-     Position(-10, 0, 0, 180))
+     Position(-10, 0, 0, 180)),
+    (Position(10, 10, 0, 90), 20, Position(10, 10, 0, 90), Position(0, 10, 0, 90), Position(10, 30, 0, 90),
+     Position(0, 30, 0, 90))
 ]
 
 
