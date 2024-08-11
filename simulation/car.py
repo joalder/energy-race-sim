@@ -21,7 +21,7 @@ class Car(Tickable):
         self.max_speed: int = max_speed
         self.energy_stored: float = energy_stored
         self.energy_used = energy_used
-        self.location = location
+        self.location: TrackLocation = location
         self.position: Position = position
         self.current_speed = current_speed
         self.distance_driven = distance_driven
@@ -53,7 +53,8 @@ class Car(Tickable):
         energy_delta = -power_for_velocity(average_speed) * convert_seconds_to_hours(
             time_delta) if acceleration >= 0 else 0 + -STANDBY_POWER * convert_seconds_to_hours(time_delta)
 
-        log.info(self.status_delta(time_delta, energy_delta, speed_delta, acceleration, distance_delta, passed_finish_line))
+        log.info(
+            self.status_delta(time_delta, energy_delta, speed_delta, acceleration, distance_delta, passed_finish_line))
         return self.derive_car(energy_delta, speed_delta, distance_delta, self.position, new_location)
 
     def status_static(self) -> str:

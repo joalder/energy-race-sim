@@ -10,7 +10,7 @@ from simulation.position import Position
 from simulation.simulation import Simulation
 from simulation.tile import Direction
 from simulation.track import TrackBuilder
-from ui.render import TrackRendererCanvas
+from ui.render import TrackRendererCanvas, VehicleRendererCanvas
 
 log = logging.getLogger(__name__)
 
@@ -64,6 +64,12 @@ def TrackRenderScript():
         id="track-view")
 
 
+def VehicleRenderScript():
+    return Div(
+        Script(VehicleRendererCanvas(ui_state.simulation.car).generate_js()),
+        id="vehicle-view")
+
+
 def ControlBar():
     slider_seconds_per_tick = Label(
         f"Simulation Resolution (Second/Tick): {ui_state.seconds_per_tick}",
@@ -96,6 +102,7 @@ def SimulationUi():
         P(f"Running? {ui_state.simulation_running}"),
         P(f"Car: {ui_state.simulation.car.status_static()}"),
         TrackRenderScript(),
+        VehicleRenderScript(),
         ControlBar(),
         id="simulation",
         hx_swap_oob="true")

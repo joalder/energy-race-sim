@@ -1,13 +1,15 @@
 import logging
 import math
 
+from simulation.car import Car
 from simulation.tile import StraightTile, CornerTile, Direction
+from simulation.track import Track
 
 log = logging.getLogger(__name__)
 
 
 class TrackRendererCanvas:
-    def __init__(self, track):
+    def __init__(self, track: Track):
         self.track = track
         self.track_color = 'grey'
         self.render_debug_points = True
@@ -17,9 +19,8 @@ class TrackRendererCanvas:
         script = f"""
         console.log('Rendering track');
         var canvas = document.getElementById('{canvas_id}');
-        console.error('Canvas element not found');
         var ctx = canvas.getContext('2d');
-        console.error('Failed to get canvas context');
+        
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.lineWidth = 2;
         ctx.strokeStyle = 'white';
@@ -86,3 +87,29 @@ class TrackRendererCanvas:
             ctx.arc({points[3].x}, {points[3].y}, {self.debug_point_size}, {points[3].orientation_rad + math.pi / 2}, {points[3].orientation_rad - math.pi / 2});
             ctx.fill();
             """
+
+
+class VehicleRendererCanvas:
+    def __init__(self, car: Car):
+        self.color = "red"
+        self.car = car
+
+    def generate_js(self, canvas_id="track-canvas"):
+        location = self.car.location.get_absolute_position()
+
+        script = f"""
+            var canvas = document.getElementById('{canvas_id}');
+            console.error('Canvas element not found');
+            var ctx = canvas.getContext('2d');
+            
+            ctx.fillStyle = '{self.color}';
+            ctx.beginPath();
+            ctx.arc({location.x}, {location.y}, 3, 0, 2 * Math.PI);
+            ctx.fill();
+            """
+
+        script += """
+            console.log('Vehicle rendered');
+            """
+
+        return script

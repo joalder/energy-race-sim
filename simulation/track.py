@@ -112,6 +112,9 @@ class TrackLocation:
                              PROGRESS_PERCENTAGE_PRECISION)
         return TrackLocation(self.track, self.tile, new_progress), passed_finish_line
 
+    def get_absolute_position(self) -> Position:
+        return self.tile.get_absolute_position(self.progress)
+
     def __str__(self):
         return f"Tile: {self.tile} / Progress: {self.progress:.1f}%"
 
