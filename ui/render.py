@@ -15,8 +15,11 @@ class TrackRendererCanvas:
 
     def generate_js(self, canvas_id="track-canvas"):
         script = f"""
+        console.log('Rendering track');
         var canvas = document.getElementById('{canvas_id}');
+        console.error('Canvas element not found');
         var ctx = canvas.getContext('2d');
+        console.error('Failed to get canvas context');
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.lineWidth = 2;
         ctx.strokeStyle = 'white';
@@ -28,6 +31,10 @@ class TrackRendererCanvas:
                 script += self._generate_straight_line(tile)
             elif isinstance(tile, CornerTile):
                 script += self._generate_corner(tile)
+
+        script += """
+        console.log('Track rendered');
+        """
 
         log.info(f"Track for reference: {self.track}")
         return script

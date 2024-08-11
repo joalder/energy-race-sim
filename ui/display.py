@@ -51,19 +51,17 @@ ui_state = UiState()
 
 
 def TrackView():
+    """
+    Create a canvas element for the track, replacing this via htmx seems to cause trouble,
+    content vanishes after settling 🤷
+    """
+    return Canvas(id="track-canvas", width=800, height=400)
+
+
+def TrackRenderScript():
     return Div(
-        Canvas(id="track-canvas", width=800, height=400),
         Script(TrackRendererCanvas(ui_state.simulation.environment.track).generate_js()),
         id="track-view")
-
-
-def SimulationUi():
-    return Div(
-        P(f"Running? {ui_state.simulation_running}"),
-        P(f"Car: {ui_state.simulation.car.status_static()}"),
-        TrackView(),
-        ControlBar(),
-        id="simulation")
 
 
 def ControlBar():
@@ -82,18 +80,29 @@ def ControlBar():
     start_button = Button("Start", hx_put="/run", hx_target='#simulation', hx_swap='none')
     pause_button = Button("Pause", hx_put="/pause", hx_target='#simulation', hx_swap='none')
     reset_button = Button("Reset", hx_put="/reset", hx_target='#simulation', hx_swap='none')
+    step_button = Button("Step", hx_put="/step", hx_target='#simulation', hx_swap='none')
 
     return Div(
         Div(
-            start_button, pause_button, reset_button
+            start_button, pause_button, reset_button, step_button
         ),
         Div(
             slider_seconds_per_tick, slider_ticks_per_second
         ))
 
 
+def SimulationUi():
+    return Div(
+        P(f"Running? {ui_state.simulation_running}"),
+        P(f"Car: {ui_state.simulation.car.status_static()}"),
+        TrackRenderScript(),
+        ControlBar(),
+        id="simulation",
+        hx_swap_oob="true")
+
+
 def Home():
-    main = Main(SimulationUi(), hx_ext="ws", ws_connect="/socket")
+    main = Main(TrackView(), SimulationUi(), hx_ext="ws", ws_connect="/socket")
     footer = Footer(P("The footer..."))
     return Title("Energy Race Sim"), main, footer
 
@@ -126,21 +135,28 @@ async def web_socket(msg: str, send): pass
 
 async def background_task():
     while True:
-        start_time = datetime.now()
+
+        time_per_tick = 1 / ui_state.ticks_per_second
 
         for _ in range(ui_state.ticks_per_second):
+            start_time = datetime.now()
+
             if ui_state.simulation_running and not ui_state.simulation.is_done() and len(player_queue) > 0:
                 ui_state.simulation.tick(ui_state.seconds_per_tick)
+                if ui_state.single_step:
+                    ui_state.simulation_running = False
+                    ui_state.single_step = False
+
                 await update_players()
 
-        time_used = datetime.now() - start_time
+            time_used = datetime.now() - start_time
 
-        if time_used.total_seconds() < 1:
-            # refresh interval static 1 second for now
-            log.debug(f"Background task took {time_used.total_seconds():.3f}s")
-            await asyncio.sleep(1 - time_used.total_seconds())
-        else:
-            log.warning(f"Lagging in simulation. Background task took {time_used.total_seconds()}s")
+            if time_used.total_seconds() < 1:
+                # refresh interval static 1 second for now
+                log.debug(f"Background task took {time_used.total_seconds():.3f}s")
+                await asyncio.sleep(time_per_tick - time_used.total_seconds())
+            else:
+                log.warning(f"Lagging in simulation. Background task took {time_used.total_seconds()}s")
 
 
 background_task_coroutine = asyncio.create_task(background_task())
@@ -150,6 +166,14 @@ background_task_coroutine = asyncio.create_task(background_task())
 async def put(session):
     ui_state.simulation_running = True
     add_toast(session, "Simulation started")
+    await update_players()
+
+
+@route('/step')
+async def put(session):
+    ui_state.simulation_running = True
+    ui_state.single_step = True
+    add_toast(session, "Simulating 1 step")
     await update_players()
 
 
