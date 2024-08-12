@@ -2,7 +2,11 @@ import asyncio
 import logging
 from datetime import datetime
 
+import pandas as pd
+import plotly.express as px
+import plotly.graph_objects as go
 from fasthtml.common import *
+from fh_plotly import plotly2fasthtml, plotly_headers
 
 from simulation.car import Car
 from simulation.environment import Environment
@@ -15,7 +19,7 @@ from ui.render import TrackRendererCanvas, VehicleRendererCanvas
 log = logging.getLogger(__name__)
 
 htmx_ws = Script(src="https://unpkg.com/htmx-ext-ws@2.0.0/ws.js")
-app = FastHTMLWithLiveReload(hdrs=(picolink, htmx_ws))
+app = FastHTMLWithLiveReload(hdrs=(picolink, htmx_ws, plotly_headers))
 route = app.route
 
 setup_toasts(app)
@@ -97,10 +101,66 @@ def ControlBar():
         ))
 
 
+def SpeedCharts():
+    # TODO: add delta for speed based on tick delta
+    speed_gauge = go.Figure(go.Indicator(
+        mode="gauge+number",
+        value=ui_state.simulation.car.current_speed,
+        domain={'x': [0, 1], 'y': [0, 1]},
+        title={'text': "Speed (m/s)"},
+        gauge={'axis': {'range': [None, ui_state.simulation.car.max_speed]}, }
+    ))
+
+    data_frame = pd.DataFrame(dict(
+        time=ui_state.simulation.car_history.keys(),
+        speed=[car.current_speed for car in ui_state.simulation.car_history.values()],
+    ))
+    speed_histogram = px.line(data_frame, x="time", y="speed", title='Speed of the car')
+
+    return Div(plotly2fasthtml(speed_gauge), plotly2fasthtml(speed_histogram))
+
+
+def EnergyCharts():
+    energy_gauge = go.Figure(go.Indicator(
+        mode="gauge+number",
+        value=ui_state.simulation.car.energy_stored,
+        domain={'x': [0, 1], 'y': [0, 1]},
+        title={'text': "Energy Stored (Wh)"},
+        gauge={'axis': {'range': [None, 10_000]}, }
+    ))
+
+    data_frame = pd.DataFrame(dict(
+        time=ui_state.simulation.car_history.keys(),
+        energy=[car.energy_stored for car in ui_state.simulation.car_history.values()],
+    ))
+    energy_histogram = px.line(data_frame, x="time", y="energy", title='Energy Stored')
+
+    data_frame = pd.DataFrame(dict(
+        time=ui_state.simulation.car_history.keys(),
+        energy=[car.energy_used for car in ui_state.simulation.car_history.values()],
+    ))
+    energy_usage_histogram = px.line(data_frame, x="time", y="energy", title='Energy Used')
+
+    data_frame = pd.DataFrame(dict(
+        time=ui_state.simulation.car_history.keys(),
+        energy=[car.energy_used_per_distance for car in ui_state.simulation.car_history.values()],
+    ))
+    energy_usage_per_distance_histogram = px.line(data_frame, x="time", y="energy", title='Energy Used per Distance')
+
+    return Div(
+        plotly2fasthtml(energy_gauge),
+        plotly2fasthtml(energy_histogram),
+        plotly2fasthtml(energy_usage_histogram),
+        plotly2fasthtml(energy_usage_per_distance_histogram)
+    )
+
+
 def SimulationUi():
     return Div(
         P(f"Running? {ui_state.simulation_running}"),
         P(f"Car: {ui_state.simulation.car.status_static()}"),
+        SpeedCharts(),
+        EnergyCharts(),
         TrackRenderScript(),
         VehicleRenderScript(),
         ControlBar(),

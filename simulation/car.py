@@ -26,6 +26,10 @@ class Car(Tickable):
         self.current_speed = current_speed
         self.distance_driven = distance_driven
 
+    @property
+    def energy_used_per_distance(self) -> float:
+        return self.energy_used / self.distance_driven if self.distance_driven > 0 else float("inf")
+
     def apply(self, environment: Environment, time_delta: int) -> Self:
         log.info(self.status_static())
 
@@ -66,7 +70,7 @@ class Car(Tickable):
         Distance Driven (m): {self.distance_driven}
         Total Energy Used (Wh): {self.energy_used}
         Current Energy Stored (Wh): {self.energy_stored}
-        Energy per Distance (Wh/m): {(self.energy_used / self.distance_driven) if self.distance_driven > 0 else "♾️"}
+        Energy per Distance (Wh/m): {self.energy_used_per_distance if self.distance_driven > 0 else "♾️"}
         """
 
     @staticmethod

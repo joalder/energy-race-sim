@@ -37,7 +37,6 @@ class TrackRendererCanvas:
         console.log('Track rendered');
         """
 
-        log.info(f"Track for reference: {self.track}")
         return script
 
     def _generate_straight_line(self, tile: StraightTile):
