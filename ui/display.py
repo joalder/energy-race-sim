@@ -331,7 +331,6 @@ async def background_task():
             log.warning(f"Lagging in simulation. Background task took {time_used.total_seconds()}s")
 
         # TODO: compensate lag and other overhead over time based on real time measurements
-        # TODO: find reason why simulation stops after a 600s 🤔
 
 
 background_task_coroutine = asyncio.create_task(background_task())

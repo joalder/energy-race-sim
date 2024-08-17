@@ -5,7 +5,7 @@ from simulation.environment import Environment
 from simulation.track import TrackLocation
 
 SECONDS_PER_TICK = 2
-MAX_RUNTIME_SECONDS = 60 * 10  # 24 * 60 * 60  # for 24h
+MAX_RUNTIME_SECONDS = 24 * 60 * 60  # 24 * 60 * 60  # for 24h
 
 log = logging.getLogger(__name__)
 log.setLevel(logging.DEBUG)
