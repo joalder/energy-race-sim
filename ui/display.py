@@ -18,10 +18,14 @@ from ui.render import TrackRendererCanvas, VehicleRendererCanvas
 
 log = logging.getLogger(__name__)
 
+pico_amber = Link(rel="stylesheet", href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.pumpkin.min.css")
+custom_css = Link(rel="stylesheet", type="text/css", href="static/style.css")
 htmx_ws = Script(src="https://unpkg.com/htmx-ext-ws@2.0.0/ws.js")
-app = FastHTMLWithLiveReload(hdrs=(picolink, htmx_ws, plotly_headers))
+app = FastHTMLWithLiveReload(hdrs=(pico_amber, custom_css, htmx_ws, plotly_headers), debug=True)
 route = app.route
 
+# Serve static files
+app.mount("/static", StaticFiles(directory="ui/static"), name="static")
 setup_toasts(app)
 
 
@@ -43,12 +47,12 @@ def create_simulation():
     return simulation
 
 
+@dataclass
 class UiState:
-    def __init__(self):
-        self.simulation_running = False
-        self.simulation = create_simulation()
-        self.ticks_per_second = 1
-        self.seconds_per_tick = 1
+    simulation_running: bool = False
+    simulation: Simulation = create_simulation()
+    ticks_per_second: int = 1
+    seconds_per_tick: int = 1
 
 
 ui_state = UiState()
@@ -59,7 +63,7 @@ def TrackView():
     Create a canvas element for the track, replacing this via htmx seems to cause trouble,
     content vanishes after settling 🤷
     """
-    return Canvas(id="track-canvas", width=800, height=400)
+    return Canvas(id="track-canvas", width=800, height=600)
 
 
 def TrackRenderScript():
@@ -75,6 +79,11 @@ def VehicleRenderScript():
 
 
 def ControlBar():
+    start_button = Button("Start", hx_put="/run", hx_target='#simulation', hx_swap='none')
+    pause_button = Button("Pause", hx_put="/pause", hx_target='#simulation', hx_swap='none')
+    reset_button = Button("Reset", hx_put="/reset", hx_target='#simulation', hx_swap='none')
+    step_button = Button("Step", hx_put="/step", hx_target='#simulation', hx_swap='none')
+
     slider_seconds_per_tick = Label(
         f"Simulation Resolution (Second/Tick): {ui_state.seconds_per_tick}",
         Input(type="range", _id='slider_seconds_per_tick', name='seconds_per_tick', min=1, max=60, step=1,
@@ -87,47 +96,24 @@ def ControlBar():
               value=ui_state.ticks_per_second, hx_trigger="change", hx_put="/update-ticks-per-second"),
         _for='slider_ticks_per_second'
     )
-    start_button = Button("Start", hx_put="/run", hx_target='#simulation', hx_swap='none')
-    pause_button = Button("Pause", hx_put="/pause", hx_target='#simulation', hx_swap='none')
-    reset_button = Button("Reset", hx_put="/reset", hx_target='#simulation', hx_swap='none')
-    step_button = Button("Step", hx_put="/step", hx_target='#simulation', hx_swap='none')
 
     return Div(
-        Div(
-            start_button, pause_button, reset_button, step_button
-        ),
-        Div(
-            slider_seconds_per_tick, slider_ticks_per_second
-        ))
+        start_button, pause_button, reset_button, step_button, slider_seconds_per_tick, slider_ticks_per_second,
+        cls="controls",
+        id="control-bar")
 
 
 def SpeedCharts():
-    # TODO: add delta for speed based on tick delta
-    speed_gauge = go.Figure(go.Indicator(
-        mode="gauge+number",
-        value=ui_state.simulation.car.current_speed,
-        domain={'x': [0, 1], 'y': [0, 1]},
-        title={'text': "Speed (m/s)"},
-        gauge={'axis': {'range': [None, ui_state.simulation.car.max_speed]}, }
-    ))
-
     data_frame = pd.DataFrame(dict(
         time=ui_state.simulation.car_history.keys(),
         speed=[car.current_speed for car in ui_state.simulation.car_history.values()],
     ))
     speed_histogram = px.line(data_frame, x="time", y="speed", title='Speed of the car')
 
-    return Div(plotly2fasthtml(speed_gauge), plotly2fasthtml(speed_histogram))
+    return Div(plotly2fasthtml(speed_histogram), cls="chart-row")
 
 
 def EnergyCharts():
-    energy_gauge = go.Figure(go.Indicator(
-        mode="gauge+number",
-        value=ui_state.simulation.car.energy_stored,
-        domain={'x': [0, 1], 'y': [0, 1]},
-        title={'text': "Energy Stored (Wh)"},
-        gauge={'axis': {'range': [None, 10_000]}, }
-    ))
 
     data_frame = pd.DataFrame(dict(
         time=ui_state.simulation.car_history.keys(),
@@ -145,59 +131,98 @@ def EnergyCharts():
         time=ui_state.simulation.car_history.keys(),
         energy=[car.energy_used_per_distance for car in ui_state.simulation.car_history.values()],
     ))
-    energy_usage_per_distance_histogram = px.line(data_frame, x="time", y="energy", title='Energy Used per Distance')
+    energy_usage_per_distance_histogram = px.line(data_frame, x="time", y="energy",
+                                                  title='Energy Used per Distance')
 
     return Div(
-        plotly2fasthtml(energy_gauge),
         plotly2fasthtml(energy_histogram),
         plotly2fasthtml(energy_usage_histogram),
-        plotly2fasthtml(energy_usage_per_distance_histogram)
+        plotly2fasthtml(energy_usage_per_distance_histogram),
+        cls="chart-row2",
     )
 
 
+def SideCharts():
+    # TODO: add delta for speed based on tick delta
+    speed_gauge = go.Figure(go.Indicator(
+        mode="gauge+number",
+        value=ui_state.simulation.car.current_speed,
+        domain={'x': [0, 1], 'y': [0, 1]},
+        title={'text': "Speed (m/s)"},
+        gauge={'axis': {'range': [None, ui_state.simulation.car.max_speed]}, }
+    ))
+
+    energy_gauge = go.Figure(go.Indicator(
+        mode="gauge+number",
+        value=ui_state.simulation.car.energy_stored,
+        domain={'x': [0, 1], 'y': [0, 1]},
+        title={'text': "Energy Stored (Wh)"},
+        gauge={'axis': {'range': [None, 10_000]}, }
+    ))
+
+    return Div(
+            plotly2fasthtml(speed_gauge),
+            plotly2fasthtml(energy_gauge),
+
+            cls="chart-side",
+            id="chart-side")
+
 def SimulationUi():
     return Div(
-        P(f"Running? {ui_state.simulation_running}"),
-        P(f"Car: {ui_state.simulation.car.status_static()}"),
+        Div(
+            P("Track: Something Something"),
+            cls="header",
+            id="header"
+        ),
+        ControlBar(),
+        Div(
+            TrackView(),
+            TrackRenderScript(),
+            VehicleRenderScript(),
+            cls="track-view",
+            id="track-view"
+        ),
+        SideCharts(),
         SpeedCharts(),
         EnergyCharts(),
-        TrackRenderScript(),
-        VehicleRenderScript(),
-        ControlBar(),
-        id="simulation",
-        hx_swap_oob="true")
+        cls="container-grid",
+        id="simulation")
 
 
 def Home():
-    main = Main(TrackView(), SimulationUi(), hx_ext="ws", ws_connect="/socket")
+    main = Main(SimulationUi(), hx_ext="ws", ws_connect="/socket")
     footer = Footer(P("The footer..."))
     return Title("Energy Race Sim"), main, footer
 
 
 @route('/')
-def get(): return Home()
+def get():
+    return Home()
 
 
-player_queue = []
+session_list = []
 
 
 async def update_players():
-    for i, player in enumerate(player_queue):
+    for i, session in enumerate(session_list):
         try:
-            await player(SimulationUi())
+            await session(VehicleRenderScript())
         except:
-            log.exception(f"Failure on updating simulation for player {i}")
-            player_queue.pop(i)
+            log.exception(f"Failure on updating simulation for session {i}")
+            session_list.pop(i)
 
 
-async def on_connect(send): player_queue.append(send)
+async def on_connect(send):
+    session_list.append(send)
 
 
-async def on_disconnect(send): await update_players()
+async def on_disconnect(send):
+    await update_players()
 
 
 @app.ws('/socket', conn=on_connect, disconn=on_disconnect)
-async def web_socket(msg: str, send): pass
+async def web_socket(msg: str, send):
+    pass
 
 
 async def background_task():
@@ -208,7 +233,7 @@ async def background_task():
         for _ in range(ui_state.ticks_per_second):
             start_time = datetime.now()
 
-            if ui_state.simulation_running and not ui_state.simulation.is_done() and len(player_queue) > 0:
+            if ui_state.simulation_running and not ui_state.simulation.is_done() and len(session_list) > 0:
                 ui_state.simulation.tick(ui_state.seconds_per_tick)
                 if ui_state.single_step:
                     ui_state.simulation_running = False

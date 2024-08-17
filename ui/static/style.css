@@ -1,0 +1,67 @@
+/* Grid basics created with https://grid.layoutit.com/?id=RFyGCNz */
+.container-grid {
+  height: 1200px;
+  display: grid;
+  grid-template-columns: 0.6fr 1fr 1fr 1fr 0.6fr;
+  grid-template-rows: 0.2fr 1.1fr 1.1fr 1fr 1fr;
+  gap: 5px 5px;
+  grid-auto-flow: row;
+  grid-template-areas:
+    "header header header header header"
+    "controls track-view track-view track-view chart-side"
+    "controls track-view track-view track-view chart-side"
+    "chart-row chart-row chart-row chart-row chart-row"
+    "chart-row2 chart-row2 chart-row2 chart-row2 chart-row2";
+}
+
+.header { grid-area: header; }
+
+.controls {  display: grid;
+  grid-template-columns: 1fr;
+  grid-template-rows: 1fr 1fr 1fr 1fr 1fr 1fr;
+  gap: 3px 0px;
+  grid-auto-flow: row;
+  grid-template-areas:
+    "."
+    "."
+    "."
+    "."
+    "."
+    ".";
+  grid-area: controls;
+}
+
+.track-view { grid-area: track-view; }
+
+.chart-row {  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-rows: 1fr;
+  gap: 3px 3px;
+  grid-auto-flow: row;
+  grid-template-areas:
+    ". . .";
+  grid-area: chart-row;
+}
+
+.chart-row2 {  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-rows: 1fr;
+  gap: 3px 3px;
+  grid-auto-flow: row;
+  grid-template-areas:
+    ". . .";
+  grid-area: chart-row2;
+}
+
+.chart-side {
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-template-rows: 1fr 1fr 1fr 1fr;
+  gap: 0px 0px;
+  grid-template-areas:
+    "."
+    "."
+    "."
+    ".";
+  grid-area: chart-side;
+}
