@@ -66,6 +66,7 @@ def TrackView():
     Create a canvas element for the track, replacing this via htmx seems to cause trouble,
     content vanishes after settling 🤷 Only swap the render scripts and reset before drawing.
     """
+    # TODO: create 2nd canvas for vehicle overlay to only redraw vehicles on update
     return Div(
         Canvas(id="track-canvas", width=800, height=600),
         TrackRenderScript(),
@@ -222,6 +223,7 @@ def SideCharts():
     ))
 
     return Div(
+        Div(f"Active: {"✅" if ui_state.simulation_running else "❌"}"),
         plotly2fasthtml(speed_gauge),
         plotly2fasthtml(energy_gauge),
         hx_swap_oob="true",
@@ -232,7 +234,7 @@ def SideCharts():
 def SimulationUi():
     return Div(
         Div(
-            P("Track: Something Something"),
+            P(f"Track: {ui_state.simulation.environment.track.name}"),
             cls="header",
             id="header"
         ),
@@ -257,33 +259,35 @@ def get():
     return Home()
 
 
-session_list = []
+sessions: list = []
 
 
-async def update_players():
-    for i, session in enumerate(session_list):
+async def update_sessions(elements: list = None):
+    if elements is None:
+        elements = [TrackRenderScript(),
+                    VehicleRenderScript(),
+                    SideCharts(),
+                    SpeedCharts(),
+                    EnergyCharts(),
+                    DeltaCharts()]
+
+    for i, session in enumerate(sessions):
         try:
             # Somehow cannot send all of them together, so make a message out of each
-            # TODO: maybe limit refresh on charts as they seem expensive to render
             # TODO: can we await all of them together?
-            for element in [TrackRenderScript(),
-                            VehicleRenderScript(),
-                            SideCharts(),
-                            SpeedCharts(),
-                            EnergyCharts(),
-                            DeltaCharts()]:
+            for element in elements:
                 await session(element)
         except:
             log.exception(f"Failure on updating simulation for session {i}")
-            session_list.pop(i)
+            sessions.pop(i)
 
 
 async def on_connect(send):
-    session_list.append(send)
+    sessions.append(send)
 
 
 async def on_disconnect(send):
-    await update_players()
+    await update_sessions()
 
 
 @app.ws('/socket', conn=on_connect, disconn=on_disconnect)
@@ -293,29 +297,39 @@ async def web_socket(msg: str, send):
 
 async def background_task():
     while True:
-
         time_per_tick = 1 / ui_state.ticks_per_second
+        update_interval = 1
+        update_needed = False
+
+        start_time = datetime.now()
 
         for _ in range(ui_state.ticks_per_second):
-            start_time = datetime.now()
-
-            if ui_state.simulation_running and not ui_state.simulation.is_done() and len(session_list) > 0:
+            if ui_state.simulation_running and not ui_state.simulation.is_done() and len(sessions) > 0:
+                update_needed = True
                 ui_state.simulation.tick(ui_state.seconds_per_tick)
+
+                # TODO: this does not seem to work: Update track and vehicle to get real smooth animation
+                await update_sessions([TrackRenderScript(), VehicleRenderScript()])
+
                 if ui_state.single_step:
                     ui_state.simulation_running = False
                     ui_state.single_step = False
 
-                await update_players()
+        if update_needed:
+            await update_sessions()
 
-            time_used = datetime.now() - start_time
+        time_used = datetime.now() - start_time
 
-            if time_used.total_seconds() < 1:
-                # refresh interval static 1 second for now
-                if time_used.total_seconds() > 0.001:
-                    log.debug(f"Background task took {time_used.total_seconds():.3f}s")
-                await asyncio.sleep(time_per_tick - time_used.total_seconds())
-            else:
-                log.warning(f"Lagging in simulation. Background task took {time_used.total_seconds()}s")
+        if time_used.total_seconds() < update_interval:
+            # refresh interval static 1 second for now
+            if time_used.total_seconds() > 0.001:
+                log.debug(f"Background task took {time_used.total_seconds():.3f}s")
+            await asyncio.sleep(update_interval - time_used.total_seconds())
+        else:
+            log.warning(f"Lagging in simulation. Background task took {time_used.total_seconds()}s")
+
+        # TODO: compensate lag and other overhead over time based on real time measurements
+        # TODO: find reason why simulation stops after a 600s 🤔
 
 
 background_task_coroutine = asyncio.create_task(background_task())
@@ -325,7 +339,7 @@ background_task_coroutine = asyncio.create_task(background_task())
 async def put(session):
     ui_state.simulation_running = True
     add_toast(session, "Simulation started")
-    await update_players()
+    await update_sessions()
 
 
 @route('/step')
@@ -333,14 +347,14 @@ async def put(session):
     ui_state.simulation_running = True
     ui_state.single_step = True
     add_toast(session, "Simulating 1 step")
-    await update_players()
+    await update_sessions()
 
 
 @route('/pause')
 async def put(session):
     ui_state.simulation_running = False
     add_toast(session, "Simulation paused")
-    await update_players()
+    await update_sessions()
 
 
 @route("/reset")
@@ -348,7 +362,7 @@ async def put(session):
     ui_state.simulation_running = False
     ui_state.simulation = create_simulation()
     add_toast(session, "Simulation reset")
-    await update_players()
+    await update_sessions()
 
 
 @route("/update-seconds-per-tick")
