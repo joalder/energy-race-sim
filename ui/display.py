@@ -5,6 +5,7 @@ from datetime import datetime
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
+import plotly.io as pio
 from fasthtml.common import *
 from fh_plotly import plotly2fasthtml, plotly_headers
 
@@ -27,6 +28,8 @@ route = app.route
 # Serve static files
 app.mount("/static", StaticFiles(directory="ui/static"), name="static")
 setup_toasts(app)
+
+pio.templates.default = "plotly_dark"
 
 
 def create_simulation():
