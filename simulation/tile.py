@@ -40,6 +40,10 @@ class Tile(ABC):
     def get_absolute_position(self, progress):
         pass
 
+    @abstractmethod
+    def max_speed(self, tire_friction_coefficient: float, vehicle_height: float, vehicle_track_width: float) -> float:
+        pass
+
 
 class Direction(Enum):
     """
@@ -91,6 +95,15 @@ class CornerTile(Tile):
         # 2r * pi / ratio of a full circle + 10% because of not hugging the inside all the time
         return round(1.1 * self.inner_radius * math.pi / (math.pi / math.radians(self.alpha)), DISTANCE_PRECISION)
 
+    def max_speed(self, tire_friction_coefficient: float, vehicle_height: float, vehicle_track_width: float) -> float:
+        """
+        Help: https://engineering.icalculator.com/cornering-force-calculator.html
+        or https://calculator.academy/maximum-cornering-speed-calculator/
+        """
+        # TODO: figure out a better radius, rather than inner_radius
+        return math.sqrt(tire_friction_coefficient * 9.81 * self.inner_radius
+                         / (1 - tire_friction_coefficient * vehicle_height / vehicle_track_width))
+
     def get_absolute_position(self, progress):
         return self.get_radius_center().derive(orientation=self.origin.orientation - 90 * self.direction.value) \
             .translate(self.inner_radius + self.width / 2, self.alpha * self.direction.value * (progress / 100))
@@ -115,6 +128,9 @@ class StraightTile(Tile):
     def path_length(self) -> float:
         # TODO: implement properly based on previous/next tile and some sort of racing line
         return round(self.length * 1.05, DISTANCE_PRECISION)
+
+    def max_speed(self, tire_friction_coefficient: float, vehicle_height: float, vehicle_track_width: float) -> float:
+        return math.inf
 
     def get_absolute_position(self, progress) -> Position:
         return self.origin.translate(self.width / 2, 90).translate(self.length * (progress / 100))

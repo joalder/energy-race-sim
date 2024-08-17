@@ -1,4 +1,5 @@
 import logging
+from dataclasses import dataclass
 from typing import Self
 
 from simulation.position import Position
@@ -88,6 +89,12 @@ class TrackBuilder:
         return Track(self.name, self.tiles)
 
 
+@dataclass
+class SpeedLimitDistance:
+    distance: float
+    speed_limit: float
+
+
 class TrackLocation:
     def __init__(self, track: Track, tile: Tile, progress: float):
         self.track = track
@@ -100,7 +107,7 @@ class TrackLocation:
         :param passed_finish_line: if finish line has already been passed
         :return: tuple of new location / finish line has been passed
         """
-        distance_left_on_tile = (100 - self.progress) / 100 * self.tile.path_length()
+        distance_left_on_tile = self.distance_left_on_tile
 
         if distance >= distance_left_on_tile:
             next_tile = self.track.tile_after(self.tile)
@@ -114,6 +121,28 @@ class TrackLocation:
 
     def get_absolute_position(self) -> Position:
         return self.tile.get_absolute_position(self.progress)
+
+    @property
+    def distance_left_on_tile(self) -> float:
+        return (100 - self.progress) / 100 * self.tile.path_length()
+
+    def get_upcoming_max_speed_locations(self, lookahead_distance: float, tire_friction_coefficient: float,
+                                         vehicle_height: float, vehicle_track_width: float,
+                                         relative_looking_distance: float = 0.0) -> list[SpeedLimitDistance]:
+        result = [SpeedLimitDistance(
+            relative_looking_distance,
+            self.tile.max_speed(tire_friction_coefficient, vehicle_height, vehicle_track_width)
+        )]
+
+        distance_left_on_tile = self.distance_left_on_tile
+        if self.distance_left_on_tile <= lookahead_distance:
+            next_tile = self.track.tile_after(self.tile)
+            result += TrackLocation(self.track, next_tile, 0.0) \
+                .get_upcoming_max_speed_locations(lookahead_distance - self.distance_left_on_tile,
+                                                  tire_friction_coefficient, vehicle_height, vehicle_track_width,
+                                                  distance_left_on_tile + relative_looking_distance)
+
+        return result
 
     def __str__(self):
         return f"Tile: {self.tile} / Progress: {self.progress:.1f}%"

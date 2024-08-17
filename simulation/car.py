@@ -1,10 +1,10 @@
 import logging
+from dataclasses import dataclass, field
 from typing import Self
 
 from simulation.base import Tickable, TickableDelta
 from simulation.environment import Environment
 from simulation.physics import power_for_velocity
-from simulation.position import Position
 from simulation.track import TrackLocation
 from simulation.units import convert_seconds_to_hours
 
@@ -14,21 +14,20 @@ STANDBY_POWER = 1000
 log = logging.getLogger(__name__)
 
 
+@dataclass
 class Car(Tickable):
-
-    def __init__(self, max_acceleration: float, max_speed, energy_stored: float = 0, energy_used: float = 0,
-                 position=Position(), current_speed: float = 0, distance_driven: float = 0,
-                 location: TrackLocation = None, lap_counter: int = 0, delta: TickableDelta = TickableDelta()):
-        self.max_acceleration: float = max_acceleration
-        self.max_speed: int = max_speed
-        self.energy_stored: float = energy_stored
-        self.energy_used = energy_used
-        self.location: TrackLocation = location
-        self.position: Position = position
-        self.current_speed = current_speed
-        self.distance_driven = distance_driven
-        self.lap_counter = lap_counter
-        self.delta_input = delta
+    max_acceleration: float
+    max_speed: int
+    height: float
+    track_width: float
+    tire_friction_coefficient: float
+    energy_stored: float = 0
+    energy_used: float = 0
+    location: TrackLocation = None
+    current_speed: float = 0.0
+    distance_driven: float = 0
+    lap_counter: int = 0
+    delta_input: TickableDelta = field(default_factory=TickableDelta)
 
     @property
     def energy_used_per_distance(self) -> float:
@@ -43,20 +42,43 @@ class Car(Tickable):
         return self.derive(delta)
 
     def calculate_delta(self, environment: Environment, time_delta_seconds: int) -> TickableDelta:
-        # TODO: figure out action to do i.e. react to environment
-        # TODO: find max speed in relevant future (max lookahead -> max_speed * time_per_tick)
-        # TODO: adapt acceleration based on future max speed
-        acceleration: float = self.max_acceleration if self.energy_stored > 0 else -self.max_acceleration
+        lookahead_factor = 20
+        lookahead_distance = self.max_speed * time_delta_seconds * lookahead_factor
+        speed_limit_locations = self.location.get_upcoming_max_speed_locations(lookahead_distance,
+                                                                               self.tire_friction_coefficient,
+                                                                               self.height,
+                                                                               self.track_width)
+        speed_limit_most_relevant = min(speed_limit_locations,
+                                        key=lambda x: (x.speed_limit - self.current_speed) / time_delta_seconds)
+        acceleration: float = self.max_acceleration
+
+        acceleration_safety_factor = 0.90
+        acceleration_safety_distance = 40  # always decelerate if distance is less than this
+        # average deceleration to reach speed limit with the given distance
+        if speed_limit_most_relevant.distance > 0:
+            # This calculation is entirely based on co-pilot, not sure if it is correct
+            deceleration = (self.current_speed ** 2 - speed_limit_most_relevant.speed_limit ** 2) / (
+                        2 * speed_limit_most_relevant.distance)
+            # TODO: also check for minimum distance to avoid unnecessary acceleration
+            if deceleration >= self.max_acceleration * acceleration_safety_factor or speed_limit_most_relevant.distance < acceleration_safety_distance:
+                acceleration = -deceleration
+        elif self.current_speed > speed_limit_most_relevant.speed_limit * acceleration_safety_factor:
+            # Assume we already did all the
+            acceleration = 0
+
+        # Apply acceleration limits
+        acceleration = min(acceleration, self.max_acceleration)
+        acceleration = acceleration if self.energy_stored > 0 else -self.max_acceleration
 
         speed_delta_ideal: float = acceleration * time_delta_seconds
         new_speed: float = max(min(self.current_speed + speed_delta_ideal, self.max_speed), 0)
         speed_delta = new_speed - self.current_speed
 
+        acceleration = speed_delta / time_delta_seconds
+
         average_speed: float = (self.current_speed + new_speed) / 2
         distance_delta: float = average_speed * time_delta_seconds
 
-        # TODO: either remove completely or derive from tile & progress
-        # new_position = self.position.derive(x=self.position.x + distance_delta)
         new_location, passed_finish_line = self.location.move(distance_delta)
 
         # TODO: this does not work if multiple laps are done in one tick
@@ -73,21 +95,22 @@ class Car(Tickable):
         return Car(
             max_acceleration=self.max_acceleration,
             max_speed=self.max_speed,
+            height=self.height,
+            track_width=self.track_width,
+            tire_friction_coefficient=self.tire_friction_coefficient,
             energy_stored=self.energy_stored + delta.energy_delta,
             energy_used=self.energy_used - delta.energy_delta,
             location=delta.new_location,
             current_speed=self.current_speed + delta.speed_delta,
             distance_driven=self.distance_driven + delta.distance_delta,
             lap_counter=self.lap_counter + delta.delta_lap,
-            delta=delta
+            delta_input=delta
         )
 
     def status_static(self) -> str:
         return f"""
         Speed (m/s): {self.current_speed}
-        Position (x/y/z): {self.position.x}/{self.position.y}/{self.position.z}
         Location (tile/progress): {self.location}
-        Orientation (0-359): {self.position.orientation}
         Distance Driven (m): {self.distance_driven}
         Total Energy Used (Wh): {self.energy_used}
         Current Energy Stored (Wh): {self.energy_stored}

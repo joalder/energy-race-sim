@@ -22,7 +22,7 @@ log = logging.getLogger(__name__)
 pico_amber = Link(rel="stylesheet", href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.pumpkin.min.css")
 custom_css = Link(rel="stylesheet", type="text/css", href="static/style.css")
 htmx_ws = Script(src="https://unpkg.com/htmx-ext-ws@2.0.0/ws.js")
-app = FastHTMLWithLiveReload(hdrs=(pico_amber, custom_css, htmx_ws, plotly_headers), debug=True)
+app = FastHTML(hdrs=(pico_amber, custom_css, htmx_ws, plotly_headers), debug=True)
 route = app.route
 
 # Serve static files
@@ -33,15 +33,16 @@ pio.templates.default = "plotly_dark"
 
 
 def create_simulation():
-    car = Car(max_acceleration=2, max_speed=33, energy_stored=10_000)
+    car = Car(max_acceleration=2, max_speed=33, energy_stored=10_000, height=1.5, track_width=1.9,
+              tire_friction_coefficient=0.8)
     track = TrackBuilder("Basic Oval", Position(50, 50, 0, 0)) \
-        .into_straight(25) \
+        .into_straight(500) \
         .into_corner(Direction.RIGHT, 90, 10) \
-        .into_straight(12) \
+        .into_straight(50) \
         .into_corner(Direction.RIGHT, 90, 10) \
-        .into_straight(25) \
+        .into_straight(500) \
         .into_corner(Direction.RIGHT, 90, 10) \
-        .into_straight(12) \
+        .into_straight(50) \
         .into_corner(Direction.RIGHT, 90, 10) \
         .loop()
     environment = Environment(track)
