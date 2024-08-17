@@ -16,8 +16,9 @@ log = logging.getLogger(__name__)
 
 class Car(Tickable):
 
-    def __init__(self, max_acceleration: float, max_speed, energy_stored=0, energy_used=0, position=Position(),
-                 current_speed=0, distance_driven=0, location: TrackLocation = None, delta: TickableDelta = None):
+    def __init__(self, max_acceleration: float, max_speed, energy_stored: float = 0, energy_used: float = 0,
+                 position=Position(), current_speed: float = 0, distance_driven: float = 0,
+                 location: TrackLocation = None, lap_counter: int = 0, delta: TickableDelta = TickableDelta()):
         self.max_acceleration: float = max_acceleration
         self.max_speed: int = max_speed
         self.energy_stored: float = energy_stored
@@ -26,6 +27,7 @@ class Car(Tickable):
         self.position: Position = position
         self.current_speed = current_speed
         self.distance_driven = distance_driven
+        self.lap_counter = lap_counter
         self.delta_input = delta
 
     @property
@@ -57,15 +59,15 @@ class Car(Tickable):
         # new_position = self.position.derive(x=self.position.x + distance_delta)
         new_location, passed_finish_line = self.location.move(distance_delta)
 
-        if passed_finish_line:
-            environment.increase_lap_counter()
+        # TODO: this does not work if multiple laps are done in one tick
+        delta_lap = 1 if passed_finish_line else 0
 
         # TODO: calculate energy needed/gained for velocity change specifically in relation to the rate of change and thus resistance/efficiency
         # + energy for keeping velocity (as of now)
         energy_delta = -power_for_velocity(average_speed) * convert_seconds_to_hours(time_delta_seconds) \
             if acceleration >= 0 else 0 + -STANDBY_POWER * convert_seconds_to_hours(time_delta_seconds)
 
-        return TickableDelta(speed_delta, acceleration, energy_delta, distance_delta, new_location, passed_finish_line)
+        return TickableDelta(speed_delta, acceleration, energy_delta, distance_delta, new_location, delta_lap)
 
     def derive(self, delta: TickableDelta) -> Self:
         return Car(
@@ -76,6 +78,7 @@ class Car(Tickable):
             location=delta.new_location,
             current_speed=self.current_speed + delta.speed_delta,
             distance_driven=self.distance_driven + delta.distance_delta,
+            lap_counter=self.lap_counter + delta.delta_lap,
             delta=delta
         )
 
@@ -99,5 +102,5 @@ class Car(Tickable):
         Acceleration Target (m/ss): {delta.acceleration}
         Distance Delta (m): {delta.distance_delta}
         Energy Delta (Wh): {delta.energy_delta}
-        Passed Finish Line: {delta.passed_finish_line}
+        Passed Finish Line: {delta.delta_lap}
         """

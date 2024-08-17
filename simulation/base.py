@@ -1,17 +1,19 @@
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from typing import Self
 
 from simulation.environment import Environment
+from simulation.track import TrackLocation
 
 
+@dataclass
 class TickableDelta(ABC):
-    def __init__(self, speed_delta, acceleration, energy_delta, distance_delta, new_location, passed_finish_line):
-        self.speed_delta = speed_delta
-        self.acceleration = acceleration
-        self.energy_delta = energy_delta
-        self.distance_delta = distance_delta
-        self.new_location = new_location
-        self.passed_finish_line = passed_finish_line
+    speed_delta: float = 0.0
+    acceleration: float = 0.0
+    energy_delta: float = 0.0
+    distance_delta: float = 0.0
+    new_location: TrackLocation = None
+    delta_lap: int = 0
 
 
 class Tickable(ABC):
