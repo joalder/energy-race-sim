@@ -311,7 +311,8 @@ async def background_task():
 
             if time_used.total_seconds() < 1:
                 # refresh interval static 1 second for now
-                log.debug(f"Background task took {time_used.total_seconds():.3f}s")
+                if time_used.total_seconds() > 0.001:
+                    log.debug(f"Background task took {time_used.total_seconds():.3f}s")
                 await asyncio.sleep(time_per_tick - time_used.total_seconds())
             else:
                 log.warning(f"Lagging in simulation. Background task took {time_used.total_seconds()}s")
