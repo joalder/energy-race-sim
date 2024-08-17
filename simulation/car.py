@@ -81,7 +81,7 @@ class Car(Tickable):
 
         new_location, passed_finish_line = self.location.move(distance_delta)
 
-        # TODO: this does not work if multiple laps are done in one tick
+        # This does not work if multiple laps are done in one tick, but probably not relevant
         delta_lap = 1 if passed_finish_line else 0
 
         # TODO: calculate energy needed/gained for velocity change specifically in relation to the rate of change and thus resistance/efficiency

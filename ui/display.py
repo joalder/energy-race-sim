@@ -57,6 +57,7 @@ class UiState:
     simulation: Simulation = create_simulation()
     ticks_per_second: int = 1
     seconds_per_tick: int = 1
+    single_step: bool = False
 
 
 ui_state = UiState()
