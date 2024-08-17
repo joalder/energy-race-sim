@@ -118,6 +118,7 @@ def ControlBar():
 
 
 def SpeedCharts():
+    # TODO: reduce resolution of charts at a certain threshold or similar
     data_frame = pd.DataFrame(dict(
         time=ui_state.simulation.car_history.keys(),
         speed=[car.current_speed for car in ui_state.simulation.car_history.values()],

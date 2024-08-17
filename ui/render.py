@@ -12,7 +12,8 @@ class TrackRendererCanvas:
     def __init__(self, track: Track):
         self.track = track
         self.track_color = 'grey'
-        self.render_debug_points = True
+        self.track_limit_color = 'white'
+        self.render_debug_points = False
         self.debug_point_size = 2
 
     def generate_js(self, canvas_id="track-canvas"):
@@ -23,7 +24,7 @@ class TrackRendererCanvas:
         
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.lineWidth = 2;
-        ctx.strokeStyle = 'white';
+        ctx.strokeStyle = '{self.track_limit_color}';
         """
 
         for tile in self.track.tiles:
@@ -42,6 +43,7 @@ class TrackRendererCanvas:
     def _generate_straight_line(self, tile: StraightTile):
         points = tile.get_defining_points()
         return f"""
+            // Tarmac
             ctx.fillStyle = '{self.track_color}';
             ctx.beginPath();
             ctx.moveTo({points[0].x}, {points[0].y});
@@ -49,7 +51,18 @@ class TrackRendererCanvas:
             ctx.lineTo({points[3].x}, {points[3].y});
             ctx.lineTo({points[2].x}, {points[2].y});
             ctx.fill();
-            """ + self._generate_debug_poitns(points, 'blue', 'orange') if self.render_debug_points else ""
+            
+            // Track limit lines
+            //ctx.strokeStyle = '{self.track_limit_color}';
+            ctx.beginPath();
+            ctx.moveTo({points[0].x}, {points[0].y});
+            ctx.lineTo({points[2].x}, {points[2].y});
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo({points[1].x}, {points[1].y});
+            ctx.lineTo({points[3].x}, {points[3].y});
+            ctx.stroke();
+            """ + self._generate_debug_points(points, 'blue', 'orange')
 
     def _generate_corner(self, tile: CornerTile):
         points = tile.get_defining_points()
@@ -61,15 +74,25 @@ class TrackRendererCanvas:
         direction_right = 'true' if tile.direction == Direction.RIGHT else 'false'
         rad_offset = math.pi / 2 if tile.direction == Direction.LEFT else -math.pi / 2
         return f"""
+            // Tarmac
             ctx.fillStyle = '{self.track_color}';
             ctx.beginPath();
             ctx.arc({radius_center.x}, {radius_center.y}, {left_radius}, {tile.origin.orientation_rad + rad_offset}, {tile.origin.orientation_rad + tile.alpha_rad + rad_offset}, {direction_left});
             ctx.lineTo({points[3].x}, {points[3].y});
             ctx.arc({radius_center.x}, {radius_center.y}, {right_radius},{tile.origin.orientation_rad + tile.alpha_rad + rad_offset}, {tile.origin.orientation_rad + rad_offset},  {direction_right});
             ctx.fill();
-            """ + self._generate_debug_poitns(points, 'red', 'green') if self.render_debug_points else ""
+            
+            // Track limit lines
+            //ctx.strokeStyle = '{self.track_limit_color}';
+            ctx.beginPath();
+            ctx.arc({radius_center.x}, {radius_center.y}, {left_radius}, {tile.origin.orientation_rad + rad_offset}, {tile.origin.orientation_rad + tile.alpha_rad + rad_offset}, {direction_left});
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.arc({radius_center.x}, {radius_center.y}, {right_radius},{tile.origin.orientation_rad + tile.alpha_rad + rad_offset}, {tile.origin.orientation_rad + rad_offset},  {direction_right});
+            ctx.stroke();
+            """ + self._generate_debug_points(points, 'red', 'green')
 
-    def _generate_debug_poitns(self, points, start_color: str, end_color: str):
+    def _generate_debug_points(self, points, start_color: str, end_color: str):
         return f"""
             ctx.fillStyle = '{start_color}';
             ctx.beginPath();
@@ -85,7 +108,7 @@ class TrackRendererCanvas:
             ctx.beginPath();
             ctx.arc({points[3].x}, {points[3].y}, {self.debug_point_size}, {points[3].orientation_rad + math.pi / 2}, {points[3].orientation_rad - math.pi / 2});
             ctx.fill();
-            """
+            """ if self.render_debug_points else ""
 
 
 class VehicleRendererCanvas:
