@@ -61,21 +61,28 @@ ui_state = UiState()
 def TrackView():
     """
     Create a canvas element for the track, replacing this via htmx seems to cause trouble,
-    content vanishes after settling 🤷
+    content vanishes after settling 🤷 Only swap the render scripts and reset before drawing.
     """
-    return Canvas(id="track-canvas", width=800, height=600)
+    return Div(
+        Canvas(id="track-canvas", width=800, height=600),
+        TrackRenderScript(),
+        VehicleRenderScript(),
+        cls="track-view",
+        id="track-view")
 
 
 def TrackRenderScript():
     return Div(
         Script(TrackRendererCanvas(ui_state.simulation.environment.track).generate_js()),
-        id="track-view")
+        hx_swap_oob="true",
+        id="track-render")
 
 
 def VehicleRenderScript():
     return Div(
         Script(VehicleRendererCanvas(ui_state.simulation.car).generate_js()),
-        id="vehicle-view")
+        hx_swap_oob="true",
+        id="vehicle-render")
 
 
 def ControlBar():
@@ -99,6 +106,7 @@ def ControlBar():
 
     return Div(
         start_button, pause_button, reset_button, step_button, slider_seconds_per_tick, slider_ticks_per_second,
+        hx_swap_oob="true",
         cls="controls",
         id="control-bar")
 
@@ -110,11 +118,14 @@ def SpeedCharts():
     ))
     speed_histogram = px.line(data_frame, x="time", y="speed", title='Speed of the car')
 
-    return Div(plotly2fasthtml(speed_histogram), cls="chart-row")
+    return Div(
+        plotly2fasthtml(speed_histogram),
+        hx_swap_oob="true",
+        cls="chart-row",
+        id="chart-row")
 
 
 def EnergyCharts():
-
     data_frame = pd.DataFrame(dict(
         time=ui_state.simulation.car_history.keys(),
         energy=[car.energy_stored for car in ui_state.simulation.car_history.values()],
@@ -138,7 +149,9 @@ def EnergyCharts():
         plotly2fasthtml(energy_histogram),
         plotly2fasthtml(energy_usage_histogram),
         plotly2fasthtml(energy_usage_per_distance_histogram),
+        hx_swap_oob="true",
         cls="chart-row2",
+        id="chart-row2"
     )
 
 
@@ -161,11 +174,12 @@ def SideCharts():
     ))
 
     return Div(
-            plotly2fasthtml(speed_gauge),
-            plotly2fasthtml(energy_gauge),
+        plotly2fasthtml(speed_gauge),
+        plotly2fasthtml(energy_gauge),
+        hx_swap_oob="true",
+        cls="chart-side",
+        id="chart-side")
 
-            cls="chart-side",
-            id="chart-side")
 
 def SimulationUi():
     return Div(
@@ -175,13 +189,7 @@ def SimulationUi():
             id="header"
         ),
         ControlBar(),
-        Div(
-            TrackView(),
-            TrackRenderScript(),
-            VehicleRenderScript(),
-            cls="track-view",
-            id="track-view"
-        ),
+        TrackView(),
         SideCharts(),
         SpeedCharts(),
         EnergyCharts(),
@@ -206,7 +214,15 @@ session_list = []
 async def update_players():
     for i, session in enumerate(session_list):
         try:
-            await session(VehicleRenderScript())
+            # Somehow cannot send all of them together, so make a message out of each
+            # TODO: maybe limit refresh on charts as they seem expensive to render
+            # TODO: can we await all of them together?
+            for element in [TrackRenderScript(),
+                            VehicleRenderScript(),
+                            SideCharts(),
+                            SpeedCharts(),
+                            EnergyCharts()]:
+                await session(element)
         except:
             log.exception(f"Failure on updating simulation for session {i}")
             session_list.pop(i)
@@ -288,11 +304,11 @@ async def put(session):
 async def put(seconds_per_tick: int):
     global ui_state
     ui_state.seconds_per_tick = seconds_per_tick
-    await update_players()
+    return ControlBar()
 
 
 @route("/update-ticks-per-second")
 async def put(ticks_per_second: int):
     global ui_state
     ui_state.ticks_per_second = ticks_per_second
-    await update_players()
+    return ControlBar()

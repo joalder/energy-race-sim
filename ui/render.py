@@ -98,7 +98,6 @@ class VehicleRendererCanvas:
 
         script = f"""
             var canvas = document.getElementById('{canvas_id}');
-            console.error('Canvas element not found');
             var ctx = canvas.getContext('2d');
             
             ctx.fillStyle = '{self.color}';
