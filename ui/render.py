@@ -1,9 +1,12 @@
 import logging
 import math
 
+from fasthtml import Div, Canvas, Script
+
 from simulation.car import Car
 from simulation.tile import StraightTile, CornerTile, Direction
 from simulation.track import Track
+from ui.state import ui_state
 
 log = logging.getLogger(__name__)
 
@@ -134,3 +137,31 @@ class VehicleRendererCanvas:
             """
 
         return script
+
+
+def TrackView():
+    """
+    Create a canvas element for the track, replacing this via htmx seems to cause trouble,
+    content vanishes after settling 🤷 Only swap the render scripts and reset before drawing.
+    """
+    # TODO: create 2nd canvas for vehicle overlay to only redraw vehicles on update
+    return Div(
+        Canvas(id="track-canvas", width=800, height=600),
+        TrackRenderScript(),
+        VehicleRenderScript(),
+        cls="track-view",
+        id="track-view")
+
+
+def TrackRenderScript():
+    return Div(
+        Script(TrackRendererCanvas(ui_state.simulation.environment.track).generate_js()),
+        hx_swap_oob="true",
+        id="track-render")
+
+
+def VehicleRenderScript():
+    return Div(
+        Script(VehicleRendererCanvas(ui_state.simulation.car).generate_js()),
+        hx_swap_oob="true",
+        id="vehicle-render")

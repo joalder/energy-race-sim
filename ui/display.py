@@ -2,20 +2,13 @@ import asyncio
 import logging
 from datetime import datetime
 
-import pandas as pd
-import plotly.express as px
-import plotly.graph_objects as go
-import plotly.io as pio
 from fasthtml.common import *
-from fh_plotly import plotly2fasthtml, plotly_headers
+from fh_plotly import plotly_headers
 
-from simulation.car import Car
-from simulation.environment import Environment
-from simulation.position import Position
-from simulation.simulation import Simulation
-from simulation.tile import Direction
-from simulation.track import TrackBuilder
-from ui.render import TrackRendererCanvas, VehicleRendererCanvas
+import ui.state
+from ui.chart import SpeedCharts, EnergyCharts, DeltaCharts, SideCharts
+from ui.render import TrackView, TrackRenderScript, VehicleRenderScript
+from ui.state import create_simulation, ui_state
 
 log = logging.getLogger(__name__)
 
@@ -28,67 +21,6 @@ route = app.route
 # Serve static files
 app.mount("/static", StaticFiles(directory="ui/static"), name="static")
 setup_toasts(app)
-
-pio.templates.default = "plotly_dark"
-
-
-def create_simulation():
-    car = Car(max_acceleration=2, max_speed=33, energy_stored=10_000, height=1.5, track_width=1.9,
-              tire_friction_coefficient=0.8)
-    track = TrackBuilder("Basic Oval", Position(50, 50, 0, 0)) \
-        .into_straight(500) \
-        .into_corner(Direction.RIGHT, 90, 10) \
-        .into_straight(50) \
-        .into_corner(Direction.RIGHT, 90, 10) \
-        .into_straight(500) \
-        .into_corner(Direction.RIGHT, 90, 10) \
-        .into_straight(50) \
-        .into_corner(Direction.RIGHT, 90, 10) \
-        .loop()
-    environment = Environment(track)
-    simulation = Simulation(car, environment)
-    simulation.setup()
-    return simulation
-
-
-@dataclass
-class UiState:
-    simulation_running: bool = False
-    simulation: Simulation = create_simulation()
-    ticks_per_second: int = 1
-    seconds_per_tick: int = 1
-    single_step: bool = False
-
-
-ui_state = UiState()
-
-
-def TrackView():
-    """
-    Create a canvas element for the track, replacing this via htmx seems to cause trouble,
-    content vanishes after settling 🤷 Only swap the render scripts and reset before drawing.
-    """
-    # TODO: create 2nd canvas for vehicle overlay to only redraw vehicles on update
-    return Div(
-        Canvas(id="track-canvas", width=800, height=600),
-        TrackRenderScript(),
-        VehicleRenderScript(),
-        cls="track-view",
-        id="track-view")
-
-
-def TrackRenderScript():
-    return Div(
-        Script(TrackRendererCanvas(ui_state.simulation.environment.track).generate_js()),
-        hx_swap_oob="true",
-        id="track-render")
-
-
-def VehicleRenderScript():
-    return Div(
-        Script(VehicleRendererCanvas(ui_state.simulation.car).generate_js()),
-        hx_swap_oob="true",
-        id="vehicle-render")
 
 
 def ControlBar():
@@ -117,123 +49,6 @@ def ControlBar():
         id="control-bar")
 
 
-def SpeedCharts():
-    # TODO: reduce resolution of charts at a certain threshold or similar
-    data_frame = pd.DataFrame(dict(
-        time=ui_state.simulation.car_history.keys(),
-        speed=[car.current_speed for car in ui_state.simulation.car_history.values()],
-    ))
-    speed_histogram = px.line(data_frame, x="time", y="speed", title='Speed of the car')
-
-    # Total distance driven
-    data_frame = pd.DataFrame(dict(
-        time=ui_state.simulation.car_history.keys(),
-        distance=[car.distance_driven for car in ui_state.simulation.car_history.values()],
-    ))
-    distance_histogram = px.line(data_frame, x="time", y="distance", title='Distance Driven')
-
-    # Total lap counter
-    data_frame = pd.DataFrame(dict(
-        time=ui_state.simulation.car_history.keys(),
-        lap=[car.lap_counter for car in ui_state.simulation.car_history.values()],
-    ))
-    lap_histogram = px.line(data_frame, x="time", y="lap", title='Lap Counter')
-
-    return Div(
-        plotly2fasthtml(speed_histogram),
-        plotly2fasthtml(distance_histogram),
-        plotly2fasthtml(lap_histogram),
-        hx_swap_oob="true",
-        cls="chart-row",
-        id="chart-row")
-
-
-def EnergyCharts():
-    data_frame = pd.DataFrame(dict(
-        time=ui_state.simulation.car_history.keys(),
-        energy=[car.energy_stored for car in ui_state.simulation.car_history.values()],
-    ))
-    energy_histogram = px.line(data_frame, x="time", y="energy", title='Energy Stored')
-
-    data_frame = pd.DataFrame(dict(
-        time=ui_state.simulation.car_history.keys(),
-        energy=[car.energy_used for car in ui_state.simulation.car_history.values()],
-    ))
-    energy_usage_histogram = px.line(data_frame, x="time", y="energy", title='Energy Used')
-
-    data_frame = pd.DataFrame(dict(
-        time=ui_state.simulation.car_history.keys(),
-        energy=[car.energy_used_per_distance for car in ui_state.simulation.car_history.values()],
-    ))
-    energy_usage_per_distance_histogram = px.line(data_frame, x="time", y="energy",
-                                                  title='Energy Used per Distance')
-
-    return Div(
-        plotly2fasthtml(energy_histogram),
-        plotly2fasthtml(energy_usage_histogram),
-        plotly2fasthtml(energy_usage_per_distance_histogram),
-        hx_swap_oob="true",
-        cls="chart-row2",
-        id="chart-row2"
-    )
-
-
-def DeltaCharts():
-    data_frame = pd.DataFrame(dict(
-        time=ui_state.simulation.car_history.keys(),
-        acceleration=[car.delta_input.acceleration for car in ui_state.simulation.car_history.values()],
-    ))
-    acceleration_histogram = px.line(data_frame, x="time", y="acceleration", title='Acceleration')
-
-    data_frame = pd.DataFrame(dict(
-        time=ui_state.simulation.car_history.keys(),
-        distance_delta=[car.delta_input.distance_delta for car in ui_state.simulation.car_history.values()],
-    ))
-    distance_delta_histogram = px.line(data_frame, x="time", y="distance_delta", title='Distance Delta')
-
-    data_frame = pd.DataFrame(dict(
-        time=ui_state.simulation.car_history.keys(),
-        energy_delta=[car.delta_input.energy_delta for car in ui_state.simulation.car_history.values()],
-    ))
-    energy_delta_histogram = px.line(data_frame, x="time", y="energy_delta", title='Energy Delta')
-
-    return Div(
-        plotly2fasthtml(acceleration_histogram),
-        plotly2fasthtml(distance_delta_histogram),
-        plotly2fasthtml(energy_delta_histogram),
-        hx_swap_oob="true",
-        cls="chart-row3",
-        id="chart-row3"
-    )
-
-
-def SideCharts():
-    # TODO: add delta for speed based on tick delta
-    speed_gauge = go.Figure(go.Indicator(
-        mode="gauge+number",
-        value=ui_state.simulation.car.current_speed,
-        domain={'x': [0, 1], 'y': [0, 1]},
-        title={'text': "Speed (m/s)"},
-        gauge={'axis': {'range': [None, ui_state.simulation.car.max_speed]}, }
-    ))
-
-    energy_gauge = go.Figure(go.Indicator(
-        mode="gauge+number",
-        value=ui_state.simulation.car.energy_stored,
-        domain={'x': [0, 1], 'y': [0, 1]},
-        title={'text': "Energy Stored (Wh)"},
-        gauge={'axis': {'range': [None, 10_000]}, }
-    ))
-
-    return Div(
-        Div(f"Active: {"✅" if ui_state.simulation_running else "❌"}"),
-        plotly2fasthtml(speed_gauge),
-        plotly2fasthtml(energy_gauge),
-        hx_swap_oob="true",
-        cls="chart-side",
-        id="chart-side")
-
-
 def SimulationUi():
     return Div(
         Div(
@@ -253,7 +68,7 @@ def SimulationUi():
 
 def Home():
     main = Main(SimulationUi(), hx_ext="ws", ws_connect="/socket")
-    footer = Footer(P("The footer..."))
+    footer = Footer(A("GitHub", href="https://github.com/joalder/energy-race-sim"))
     return Title("Energy Race Sim"), main, footer
 
 
@@ -369,13 +184,11 @@ async def put(session):
 
 @route("/update-seconds-per-tick")
 async def put(seconds_per_tick: int):
-    global ui_state
-    ui_state.seconds_per_tick = seconds_per_tick
+    ui.state.ui_state.seconds_per_tick = seconds_per_tick
     return ControlBar()
 
 
 @route("/update-ticks-per-second")
 async def put(ticks_per_second: int):
-    global ui_state
-    ui_state.ticks_per_second = ticks_per_second
+    ui.state.ui_state.ticks_per_second = ticks_per_second
     return ControlBar()
