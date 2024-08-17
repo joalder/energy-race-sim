@@ -5,18 +5,19 @@ from simulation.environment import Environment
 from simulation.track import TrackLocation
 
 SECONDS_PER_TICK = 2
-MAX_RUNTIME_SECONDS = 24 * 60 * 60  # 24 * 60 * 60  # for 24h
+MAX_RUNTIME_SECONDS = 24 * 60 * 60  # 24h
 
 log = logging.getLogger(__name__)
 log.setLevel(logging.DEBUG)
 
 
 class Simulation:
-    def __init__(self, car, environment):
+    def __init__(self, car, environment, max_runtime_seconds=MAX_RUNTIME_SECONDS):
         self.time = 0
         self.environment: Environment = environment
         self.car: Car = car
         self.car_history: dict[int, Car] = {self.time: self.car}
+        self.max_runtime_seconds = max_runtime_seconds
 
     def loop(self):
         self.setup()
@@ -27,7 +28,7 @@ class Simulation:
         log.info(f"Simulation done. Total time: {self.time}s")
 
     def is_done(self) -> bool:
-        return self.time >= MAX_RUNTIME_SECONDS
+        return self.time >= self.max_runtime_seconds
 
     def setup(self):
         self.car.location = TrackLocation(self.environment.track, self.environment.track.starting_tile, 0.0)
