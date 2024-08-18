@@ -30,6 +30,7 @@ class TrackRendererCanvas:
         ctx.strokeStyle = '{self.track_limit_color}';
         """
 
+        # TODO: render start/finish line
         for tile in self.track.tiles:
             # TODO: make a pretty match statement or similar
             if isinstance(tile, StraightTile):
@@ -150,7 +151,7 @@ def TrackView():
     """
     # TODO: create 2nd canvas for vehicle overlay to only redraw vehicles on update
     return Div(
-        Canvas(id="track-canvas", width=800, height=600),
+        Canvas(id="track-canvas", width=800, height=800),
         TrackRenderScript(),
         VehicleRenderScript(),
         cls="track-view",

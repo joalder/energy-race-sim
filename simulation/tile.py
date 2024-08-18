@@ -92,8 +92,8 @@ class CornerTile(Tile):
 
     def path_length(self):
         # TODO: implement properly based on previous/next tile and some sort of racing line
-        # 2r * pi / ratio of a full circle + 10% because of not hugging the inside all the time
-        return round(1.1 * self.inner_radius * math.pi / (math.pi / math.radians(self.alpha)), DISTANCE_PRECISION)
+        # 2r * pi / ratio of a full circle + 0% removed buffer for now
+        return round(self.inner_radius * math.pi / (math.pi / math.radians(self.alpha)), DISTANCE_PRECISION)
 
     def max_speed(self, tire_friction_coefficient: float, vehicle_height: float, vehicle_track_width: float) -> float:
         """
@@ -127,7 +127,7 @@ class StraightTile(Tile):
 
     def path_length(self) -> float:
         # TODO: implement properly based on previous/next tile and some sort of racing line
-        return round(self.length * 1.05, DISTANCE_PRECISION)
+        return round(self.length, DISTANCE_PRECISION)
 
     def max_speed(self, tire_friction_coefficient: float, vehicle_height: float, vehicle_track_width: float) -> float:
         return math.inf

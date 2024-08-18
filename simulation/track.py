@@ -88,8 +88,10 @@ class TrackBuilder:
     def loop(self) -> Track:
         if not self.tiles:
             raise TrackIsEmptyException()
-        if self.current_end != self.track_origin:
-            raise TrackDoesNotLoopException(self.tiles)
+        # TODO: re-enable check or make incomplete tracks possible or check only on simulation start
+        # if self.current_end != self.track_origin:
+        #    raise TrackDoesNotLoopException(self.tiles)
+        # TODO: write logic to safely close the track
         return Track(self.name, self.tiles)
 
 
