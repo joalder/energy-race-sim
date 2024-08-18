@@ -79,6 +79,10 @@ class TrackBuilder:
         return self.into(StraightTile(self.current_end, length))
 
     def into_corner(self, direction: Direction, angle: int, inner_radius: float):
+        # Split any radius > 90 into multiple corners as current calculation only supports up to 90
+        if angle > 90:
+            return self.into_corner(direction, 90, inner_radius) \
+                .into_corner(direction, angle - 90, inner_radius)
         return self.into(CornerTile(self.current_end, angle, inner_radius, direction))
 
     def loop(self) -> Track:

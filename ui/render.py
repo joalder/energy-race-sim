@@ -46,6 +46,7 @@ class TrackRendererCanvas:
     def _generate_straight_line(self, tile: StraightTile):
         points = tile.get_defining_points()
         return f"""
+            // -- Straight {tile.length}m --
             // Tarmac
             ctx.fillStyle = '{self.track_color}';
             ctx.beginPath();
@@ -70,28 +71,31 @@ class TrackRendererCanvas:
     def _generate_corner(self, tile: CornerTile):
         points = tile.get_defining_points()
         radius_center = tile.get_radius_center()
-        # TODO: make this less stupid and noisy
+        # TODO: make this less stupid and noisy, left corner is now drawn in reverse??
         left_radius = tile.width + tile.inner_radius if tile.direction == Direction.RIGHT else tile.inner_radius
         right_radius = tile.width + tile.inner_radius if tile.direction == Direction.LEFT else tile.inner_radius
-        direction_left = 'true' if tile.direction == Direction.LEFT else 'false'
-        direction_right = 'true' if tile.direction == Direction.RIGHT else 'false'
+        direction_left_arc, direction_right_arc = 'false', 'true'
         rad_offset = math.pi / 2 if tile.direction == Direction.LEFT else -math.pi / 2
+        arc_start_rad = tile.origin.orientation_rad + rad_offset + (-tile.alpha_rad if tile.direction == Direction.LEFT else 0)
+        arc_end_rad = tile.origin.orientation_rad + rad_offset + (tile.alpha_rad if tile.direction == Direction.RIGHT else 0)
+        point_for_line = points[3] if tile.direction == Direction.RIGHT else points[0]
         return f"""
+            // -- Corner {tile.direction.name} {tile.alpha}° {tile.inner_radius}m --
             // Tarmac
             ctx.fillStyle = '{self.track_color}';
             ctx.beginPath();
-            ctx.arc({radius_center.x}, {radius_center.y}, {left_radius}, {tile.origin.orientation_rad + rad_offset}, {tile.origin.orientation_rad + tile.alpha_rad + rad_offset}, {direction_left});
-            ctx.lineTo({points[3].x}, {points[3].y});
-            ctx.arc({radius_center.x}, {radius_center.y}, {right_radius},{tile.origin.orientation_rad + tile.alpha_rad + rad_offset}, {tile.origin.orientation_rad + rad_offset},  {direction_right});
+            ctx.arc({radius_center.x}, {radius_center.y}, {left_radius}, {arc_start_rad}, {arc_end_rad}, {direction_left_arc});
+            ctx.lineTo({point_for_line.x}, {point_for_line.y});
+            ctx.arc({radius_center.x}, {radius_center.y}, {right_radius}, {arc_end_rad}, {arc_start_rad}, {direction_right_arc});
             ctx.fill();
             
             // Track limit lines
             //ctx.strokeStyle = '{self.track_limit_color}';
             ctx.beginPath();
-            ctx.arc({radius_center.x}, {radius_center.y}, {left_radius}, {tile.origin.orientation_rad + rad_offset}, {tile.origin.orientation_rad + tile.alpha_rad + rad_offset}, {direction_left});
+            ctx.arc({radius_center.x}, {radius_center.y}, {left_radius}, {arc_start_rad}, {arc_end_rad}, {direction_left_arc});
             ctx.stroke();
             ctx.beginPath();
-            ctx.arc({radius_center.x}, {radius_center.y}, {right_radius},{tile.origin.orientation_rad + tile.alpha_rad + rad_offset}, {tile.origin.orientation_rad + rad_offset},  {direction_right});
+            ctx.arc({radius_center.x}, {radius_center.y}, {right_radius}, {arc_end_rad}, {arc_start_rad}, {direction_right_arc});
             ctx.stroke();
             """ + self._generate_debug_points(points, 'red', 'green')
 
