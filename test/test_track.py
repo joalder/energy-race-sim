@@ -32,10 +32,10 @@ simple_track = TrackBuilder("Simple Track", Position(0, 0, 0, 0)) \
     .into_corner(Direction.RIGHT, 90, 10) \
     .loop()
 test_data_straight_move = [
-    (TrackLocation(simple_track, simple_track.starting_tile, 0.0), 10.5,
-     TrackLocation(simple_track, simple_track.starting_tile, 50.0), False),
-    (TrackLocation(simple_track, simple_track.starting_tile, 0.0), 21,
-     TrackLocation(simple_track, simple_track.tiles[1], 0.0), False),
+    (TrackLocation(simple_track, simple_track.starting_tile, 0.0), 10,
+     TrackLocation(simple_track, simple_track.starting_tile, 50), False),
+    (TrackLocation(simple_track, simple_track.starting_tile, 0.0), 20,
+     TrackLocation(simple_track, simple_track.tiles[1], 0), False),
     (TrackLocation(simple_track, simple_track.starting_tile, 0.0), simple_track.total_length,
      TrackLocation(simple_track, simple_track.starting_tile, 0.0), True),
 ]

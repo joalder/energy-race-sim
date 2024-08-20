@@ -1,8 +1,8 @@
 import pandas as pd
+import plotly.graph_objects as go
 import plotly.io as pio
 from fasthtml import Div
 from fh_plotly import plotly2fasthtml
-from plotly import express as px, graph_objects as go
 
 from ui.state import ui_state
 
@@ -56,33 +56,40 @@ def DeltaCharts():
     )
 
 
-def vehicle_line_chart_over_time(extractor: callable, label_y: str, label_x: str = 'time'):
-    data_frame = pd.DataFrame(dict(
-        time=ui_state.simulation.vehicle_history.keys(),
-        y=[extractor(v) for v in ui_state.simulation.vehicle_history.values()],
-    ))
-    data_frame['time'] = pd.to_datetime(data_frame['time'], unit='s')
-    histogram = px.line(data_frame, x="time", y="y",
-                        labels={'time': label_x, 'y': label_y})
-    histogram.update_layout(margin=dict(b=20, l=80, r=20, t=20), xaxis_title="")
+def vehicle_line_chart_over_time(extractor: callable, label_y: str, label_x: str = ''):
+    histogram = go.Figure()
+
+    for index, vehicle in enumerate(ui_state.simulation.vehicles):
+        data_frame = pd.DataFrame(dict(
+            time=ui_state.simulation.vehicle_history.keys(),
+            y=[extractor(time_slot[index]) for time_slot in ui_state.simulation.vehicle_history.values()],
+        ))
+        data_frame['time'] = pd.to_datetime(data_frame['time'], unit='s')
+        histogram.add_trace(go.Scatter(x=data_frame['time'], y=data_frame['y'],
+                                       mode='lines', name=vehicle.name,
+                                       line=dict(color=vehicle.color, ),
+                                       ))
+
+    histogram.update_layout(margin=dict(b=20, l=80, r=20, t=20), yaxis_title=label_y, xaxis_title=label_x)
     histogram.update_xaxes(tickformat="%H:%M", dtick=60 * 1000)  # dtick is in milliseconds
     return histogram
 
 
 def SideCharts():
     # TODO: add delta for speed based on tick delta
+    # TODO: make this multi-vehicle compatible
     speed_gauge = go.Figure(go.Indicator(
         mode="gauge+number",
-        value=ui_state.simulation.vehicle.current_speed,
+        value=ui_state.simulation.vehicles[0].current_speed,
         domain={'x': [0, 1], 'y': [0, 1]},
         title={'text': "Speed (m/s)"},
-        gauge={'axis': {'range': [None, ui_state.simulation.vehicle.max_speed]}, }
+        gauge={'axis': {'range': [None, ui_state.simulation.vehicles[0].max_speed]}, }
     ))
     speed_gauge.update_layout(margin=dict(b=20, l=20, r=20, t=70))
 
     energy_gauge = go.Figure(go.Indicator(
         mode="gauge+number",
-        value=ui_state.simulation.vehicle.energy_stored,
+        value=ui_state.simulation.vehicles[0].energy_stored,
         domain={'x': [0, 1], 'y': [0, 1]},
         title={'text': "Energy Stored (Wh)"},
         gauge={'axis': {'range': [None, 10_000]}, }

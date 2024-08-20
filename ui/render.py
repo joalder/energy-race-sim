@@ -4,9 +4,9 @@ from dataclasses import dataclass
 
 from fasthtml import Div, Canvas, Script
 
-from simulation.vehicle import Vehicle
 from simulation.tile import StraightTile, CornerTile, Direction
 from simulation.track import Track
+from simulation.vehicle import Vehicle
 from ui.state import ui_state
 
 log = logging.getLogger(__name__)
@@ -127,7 +127,6 @@ class TrackRendererCanvas:
 @dataclass
 class VehicleRendererCanvas:
     vehicle: Vehicle
-    color: str = "red"
     render_scale: float = 1
 
     def generate_js(self, canvas_id="track-canvas"):
@@ -137,7 +136,7 @@ class VehicleRendererCanvas:
             var canvas = document.getElementById('{canvas_id}');
             var ctx = canvas.getContext('2d');
             
-            ctx.fillStyle = '{self.color}';
+            ctx.fillStyle = '{self.vehicle.color}';
             ctx.beginPath();
             ctx.arc({location.x * self.render_scale}, {location.y * self.render_scale}, 3, 0, 2 * Math.PI);
             ctx.fill();
@@ -175,6 +174,9 @@ def TrackRenderScript():
 
 def VehicleRenderScript():
     return Div(
-        Script(VehicleRendererCanvas(ui_state.simulation.vehicle, render_scale=ui_state.render_scale).generate_js()),
+        *[
+            Script(VehicleRendererCanvas(vehicle, render_scale=ui_state.render_scale).generate_js())
+            for vehicle in ui_state.simulation.vehicles
+        ],
         hx_swap_oob="true",
         id="vehicle-render")

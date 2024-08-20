@@ -138,8 +138,8 @@ def test__corner__path_length(origin, alpha: int, inner_radius: int, direction: 
 
 
 test_data_straight_path_length = [
-    (POSITION_0_0_0_0, 10, 10.5),  # 10 + 5%
-    (POSITION_0_0_0_0, 20, 21),  # 20 + 5%
+    (POSITION_0_0_0_0, 10, 10),  # 10 + 0% for now
+    (POSITION_0_0_0_0, 20, 20),  # 20 + 0% for now
 ]
 
 

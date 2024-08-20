@@ -16,6 +16,8 @@ log = logging.getLogger(__name__)
 
 @dataclass
 class Vehicle(Tickable):
+    name: str
+    color: str
     max_acceleration: float
     max_speed: int
     height: float
@@ -93,6 +95,8 @@ class Vehicle(Tickable):
 
     def derive(self, delta: TickableDelta) -> Self:
         return Vehicle(
+            name=self.name,
+            color=self.color,
             max_acceleration=self.max_acceleration,
             max_speed=self.max_speed,
             height=self.height,
@@ -109,6 +113,7 @@ class Vehicle(Tickable):
 
     def status_static(self) -> str:
         return f"""
+        Vehicle: {self.name}
         Speed (m/s): {self.current_speed}
         Location (tile/progress): {self.location}
         Distance Driven (m): {self.distance_driven}

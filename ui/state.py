@@ -1,11 +1,11 @@
 from dataclasses import dataclass
 
-from simulation.vehicle import Vehicle
 from simulation.environment import Environment
 from simulation.position import Position
 from simulation.simulation import Simulation
 from simulation.tile import Direction
 from simulation.track import TrackBuilder, Track
+from simulation.vehicle import Vehicle
 
 
 def create_basic_oval() -> Track:
@@ -19,6 +19,7 @@ def create_basic_oval() -> Track:
         .into_straight(50) \
         .into_corner(Direction.RIGHT, 90, 10) \
         .loop()
+
 
 def create_hockenheimring_short_2() -> Track:
     """
@@ -97,13 +98,15 @@ def create_hockenheimring_short_2() -> Track:
 
 
 def create_simulation():
-    vehicle = Vehicle(max_acceleration=2, max_speed=33, energy_stored=10_000, height=1.5, track_width=1.9,
-                  tire_friction_coefficient=0.8)
+    vehicle_red = Vehicle("Default Car", "red", 2, max_speed=33, energy_stored=10_000, height=1.5, track_width=1.9,
+                      tire_friction_coefficient=0.8)
+    vehicle_blue = Vehicle("Fast Car", "blue", 4, max_speed=40, energy_stored=10_000, height=1.5, track_width=1.9,
+                          tire_friction_coefficient=0.8)
 
     track = create_hockenheimring_short_2()
 
     environment = Environment(track)
-    simulation = Simulation(vehicle, environment)
+    simulation = Simulation([vehicle_red, vehicle_blue], environment)
     simulation.setup()
     return simulation
 
