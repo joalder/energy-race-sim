@@ -11,25 +11,9 @@ pio.templates.default = "plotly_dark"
 
 def SpeedCharts():
     # TODO: reduce resolution of charts at a certain threshold or similar
-    data_frame = pd.DataFrame(dict(
-        time=ui_state.simulation.car_history.keys(),
-        speed=[car.current_speed for car in ui_state.simulation.car_history.values()],
-    ))
-    speed_histogram = px.line(data_frame, x="time", y="speed", title='Speed of the car')
-
-    # Total distance driven
-    data_frame = pd.DataFrame(dict(
-        time=ui_state.simulation.car_history.keys(),
-        distance=[car.distance_driven for car in ui_state.simulation.car_history.values()],
-    ))
-    distance_histogram = px.line(data_frame, x="time", y="distance", title='Distance Driven')
-
-    # Total lap counter
-    data_frame = pd.DataFrame(dict(
-        time=ui_state.simulation.car_history.keys(),
-        lap=[car.lap_counter for car in ui_state.simulation.car_history.values()],
-    ))
-    lap_histogram = px.line(data_frame, x="time", y="lap", title='Lap Counter')
+    speed_histogram = vehicle_line_chart_over_time(lambda car: car.current_speed, "Speed (m/s)")
+    distance_histogram = vehicle_line_chart_over_time(lambda car: car.distance_driven, "Distance (m)")
+    lap_histogram = vehicle_line_chart_over_time(lambda car: car.lap_counter, "Laps")
 
     return Div(
         plotly2fasthtml(speed_histogram),
@@ -41,24 +25,10 @@ def SpeedCharts():
 
 
 def EnergyCharts():
-    data_frame = pd.DataFrame(dict(
-        time=ui_state.simulation.car_history.keys(),
-        energy=[car.energy_stored for car in ui_state.simulation.car_history.values()],
-    ))
-    energy_histogram = px.line(data_frame, x="time", y="energy", title='Energy Stored')
-
-    data_frame = pd.DataFrame(dict(
-        time=ui_state.simulation.car_history.keys(),
-        energy=[car.energy_used for car in ui_state.simulation.car_history.values()],
-    ))
-    energy_usage_histogram = px.line(data_frame, x="time", y="energy", title='Energy Used')
-
-    data_frame = pd.DataFrame(dict(
-        time=ui_state.simulation.car_history.keys(),
-        energy=[car.energy_used_per_distance for car in ui_state.simulation.car_history.values()],
-    ))
-    energy_usage_per_distance_histogram = px.line(data_frame, x="time", y="energy",
-                                                  title='Energy Used per Distance')
+    energy_histogram = vehicle_line_chart_over_time(lambda car: car.energy_stored, "⚡ Stored (Wh)")
+    energy_usage_histogram = vehicle_line_chart_over_time(lambda car: car.energy_used, "⚡ Used (Wh)")
+    energy_usage_per_distance_histogram = vehicle_line_chart_over_time(lambda car: car.energy_used_per_distance,
+                                                                       "⚡ per Distance (Wh/m)")
 
     return Div(
         plotly2fasthtml(energy_histogram),
@@ -71,23 +41,10 @@ def EnergyCharts():
 
 
 def DeltaCharts():
-    data_frame = pd.DataFrame(dict(
-        time=ui_state.simulation.car_history.keys(),
-        acceleration=[car.delta_input.acceleration for car in ui_state.simulation.car_history.values()],
-    ))
-    acceleration_histogram = px.line(data_frame, x="time", y="acceleration", title='Acceleration')
-
-    data_frame = pd.DataFrame(dict(
-        time=ui_state.simulation.car_history.keys(),
-        distance_delta=[car.delta_input.distance_delta for car in ui_state.simulation.car_history.values()],
-    ))
-    distance_delta_histogram = px.line(data_frame, x="time", y="distance_delta", title='Distance Delta')
-
-    data_frame = pd.DataFrame(dict(
-        time=ui_state.simulation.car_history.keys(),
-        energy_delta=[car.delta_input.energy_delta for car in ui_state.simulation.car_history.values()],
-    ))
-    energy_delta_histogram = px.line(data_frame, x="time", y="energy_delta", title='Energy Delta')
+    acceleration_histogram = vehicle_line_chart_over_time(lambda car: car.delta_input.acceleration, "Accel. Δ (m/s²)")
+    distance_delta_histogram = vehicle_line_chart_over_time(lambda car: car.delta_input.distance_delta,
+                                                            "Distance Δ (m)")
+    energy_delta_histogram = vehicle_line_chart_over_time(lambda car: car.delta_input.energy_delta, "Energy Δ (Wh)")
 
     return Div(
         plotly2fasthtml(acceleration_histogram),
@@ -99,6 +56,19 @@ def DeltaCharts():
     )
 
 
+def vehicle_line_chart_over_time(extractor: callable, label_y: str, label_x: str = 'time'):
+    data_frame = pd.DataFrame(dict(
+        time=ui_state.simulation.car_history.keys(),
+        y=[extractor(car) for car in ui_state.simulation.car_history.values()],
+    ))
+    data_frame['time'] = pd.to_datetime(data_frame['time'], unit='s')
+    histogram = px.line(data_frame, x="time", y="y",
+                        labels={'time': label_x, 'y': label_y})
+    histogram.update_layout(margin=dict(b=20, l=80, r=20, t=20), xaxis_title="")
+    histogram.update_xaxes(tickformat="%H:%M", dtick=60 * 1000)  # dtick is in milliseconds
+    return histogram
+
+
 def SideCharts():
     # TODO: add delta for speed based on tick delta
     speed_gauge = go.Figure(go.Indicator(
@@ -108,6 +78,7 @@ def SideCharts():
         title={'text': "Speed (m/s)"},
         gauge={'axis': {'range': [None, ui_state.simulation.car.max_speed]}, }
     ))
+    speed_gauge.update_layout(margin=dict(b=20, l=20, r=20, t=70))
 
     energy_gauge = go.Figure(go.Indicator(
         mode="gauge+number",
@@ -116,6 +87,7 @@ def SideCharts():
         title={'text': "Energy Stored (Wh)"},
         gauge={'axis': {'range': [None, 10_000]}, }
     ))
+    energy_gauge.update_layout(margin=dict(b=20, l=20, r=20, t=70))
 
     return Div(
         Div(f"Active: {"✅" if ui_state.simulation_running else "❌"}"),
