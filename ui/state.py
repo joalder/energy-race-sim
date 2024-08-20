@@ -60,7 +60,7 @@ def create_hockenheimring_short_2() -> Track:
     """
 
     # https://www.racingcircuits.info/europe/germany/hockenheimring.html
-    return TrackBuilder("Hockenheimring Short Circuit 2 1.0", Position(40, 420, 0, 270)) \
+    return TrackBuilder("Hockenheimring Short Circuit 2 1.0", Position(440, 50, 0, 0)) \
         .into_straight(231) \
         .into_corner(Direction.RIGHT, 52.2, 25) \
         .into_straight(76.57) \
@@ -115,6 +115,7 @@ class UiState:
     ticks_per_second: int = 1
     seconds_per_tick: int = 1
     single_step: bool = False
+    render_scale: float = 0.7
 
 
 ui_state = UiState()

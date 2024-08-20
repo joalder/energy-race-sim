@@ -13,3 +13,4 @@
 - ✅ Visualize track and locations
 - Plugin architecture for strategies and different physical aspects
 - Render track only once and only update vehicles and charts
+- Use GPS/Map data to create tracks, e.g. https://github.com/TUMFTM/racetrack-database
