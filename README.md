@@ -4,7 +4,7 @@
 
 - ✅ Full history of steps which allows to move back/forward in time (e.g. using command pattern)
 - ✅ Charting of statistics over time
-- Run multiple cars at the same time
+- Run multiple vehicles at the same time
 - Adjust parameters mid simulation
 - ✅ Allow running in variable time, real time to full speed
 - Simulate actual track with height profile, corner speeds, ...

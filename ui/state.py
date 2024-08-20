@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from simulation.car import Car
+from simulation.vehicle import Vehicle
 from simulation.environment import Environment
 from simulation.position import Position
 from simulation.simulation import Simulation
@@ -97,13 +97,13 @@ def create_hockenheimring_short_2() -> Track:
 
 
 def create_simulation():
-    car = Car(max_acceleration=2, max_speed=33, energy_stored=10_000, height=1.5, track_width=1.9,
-              tire_friction_coefficient=0.8)
+    vehicle = Vehicle(max_acceleration=2, max_speed=33, energy_stored=10_000, height=1.5, track_width=1.9,
+                  tire_friction_coefficient=0.8)
 
     track = create_hockenheimring_short_2()
 
     environment = Environment(track)
-    simulation = Simulation(car, environment)
+    simulation = Simulation(vehicle, environment)
     simulation.setup()
     return simulation
 

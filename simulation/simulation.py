@@ -1,6 +1,6 @@
 import logging
 
-from simulation.car import Car
+from simulation.vehicle import Vehicle
 from simulation.environment import Environment
 from simulation.track import TrackLocation
 
@@ -12,11 +12,11 @@ log.setLevel(logging.DEBUG)
 
 
 class Simulation:
-    def __init__(self, car, environment, max_runtime_seconds=MAX_RUNTIME_SECONDS):
+    def __init__(self, vehicle, environment, max_runtime_seconds=MAX_RUNTIME_SECONDS):
         self.time = 0
         self.environment: Environment = environment
-        self.car: Car = car
-        self.car_history: dict[int, Car] = {self.time: self.car}
+        self.vehicle: Vehicle = vehicle
+        self.vehicle_history: dict[int, Vehicle] = {self.time: self.vehicle}
         self.max_runtime_seconds = max_runtime_seconds
 
     def loop(self):
@@ -31,15 +31,15 @@ class Simulation:
         return self.time >= self.max_runtime_seconds
 
     def setup(self):
-        self.car.location = TrackLocation(self.environment.track, self.environment.track.starting_tile, 0.0)
+        self.vehicle.location = TrackLocation(self.environment.track, self.environment.track.starting_tile, 0.0)
 
     def tick(self, seconds_per_tick: int = 1):
         self._advance_time(seconds_per_tick)
 
         log.debug(f"Processing tick at {self.time}s")
 
-        self.car = self.car.apply(self.environment, seconds_per_tick)
-        self.car_history[self.time] = self.car
+        self.vehicle = self.vehicle.apply(self.environment, seconds_per_tick)
+        self.vehicle_history[self.time] = self.vehicle
 
         log.info(self.environment.status())
 

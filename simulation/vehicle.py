@@ -15,7 +15,7 @@ log = logging.getLogger(__name__)
 
 
 @dataclass
-class Car(Tickable):
+class Vehicle(Tickable):
     max_acceleration: float
     max_speed: int
     height: float
@@ -92,7 +92,7 @@ class Car(Tickable):
         return TickableDelta(speed_delta, acceleration, energy_delta, distance_delta, new_location, delta_lap)
 
     def derive(self, delta: TickableDelta) -> Self:
-        return Car(
+        return Vehicle(
             max_acceleration=self.max_acceleration,
             max_speed=self.max_speed,
             height=self.height,
